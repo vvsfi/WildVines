@@ -135,8 +135,8 @@
           // Occasionally add a flower (circle) with a vivid color.
           if (Math.random() < vineProbabilityFlower) {
             let flower = createSVGElement("circle", {
-              cx: newX,
-              cy: newY,
+              cx: newX + 4,
+              cy: newY + 4,
               r: 8 + Math.random() * 2,
               fill: randomVividColor(),
               stroke: "#fff",
