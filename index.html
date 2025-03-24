@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>@saarinenkoti.fi - Wild Vines</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+      background-color: #fff;
+    }
+    /* Full screen SVG canvas */
+    #canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    /* Center overlay text: fixed translucent black, always on top */
+    #overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 48px;
+      font-family: sans-serif;
+      font-weight: bold;
+      color: rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <!-- SVG canvas for drawing vines -->
+  <svg id="canvas"></svg>
+  <!-- Center overlay text -->
+  <div id="overlay">@saarinenkoti.fi</div>
+
+  <script>
+    (function(){
+      const svgns = "http://www.w3.org/2000/svg";
+      const canvas = document.getElementById("canvas");
+      let width = window.innerWidth;
+      let height = window.innerHeight;
+      canvas.setAttribute("width", width);
+      canvas.setAttribute("height", height);
+
+      // Configuration: only 10 vines active and a maximum of 250 SVG elements.
+      const maxVines = 25;
+      const maxSVGElements = 25000;
+      const stepSize = 4;
+      const vineProbabilityLeaf = 0.1;
+      const vineProbabilityFlower = 0.03;
+      const vineProbabilityBranch = 0.005;
+
+      let vines = [];
+
+      // Returns a random vivid color (for flowers) in HSLA format.
+      function randomVividColor() {
+        return "hsla(" + Math.floor(Math.random() * 360) + ", 90%, 50%, 0.8)";
+      }
+
+      // Utility: create an SVG element with the given attributes.
+      function createSVGElement(tag, attrs) {
+        const elem = document.createElementNS(svgns, tag);
+        for (let attr in attrs) {
+          elem.setAttribute(attr, attrs[attr]);
+        }
+        return elem;
+      }
+
+      // Spawn a new vine starting from a random position along the bottom edge.
+      function spawnVine() {
+        return {
+          x: Math.random() * width,
+          y: height,
+          angle: -Math.PI / 2 + (Math.random() - 0.5) * 0.5 // mostly upward with a slight twist
+        };
+      }
+
+      // Seed initial vines.
+      for (let i = 0; i < maxVines; i++){
+        vines.push(spawnVine());
+      }
+
+      // Immediately remove oldest SVG elements until the total count is below the limit.
+      function trimSVGElements() {
+        while (canvas.childNodes.length > maxSVGElements) {
+          canvas.removeChild(canvas.firstChild);
+        }
+      }
+
+      // Main update loop to grow vines.
+      function update() {
+        for (let i = vines.length - 1; i >= 0; i--) {
+          let vine = vines[i];
+          let oldX = vine.x;
+          let oldY = vine.y;
+
+          // Slight random variation to the angle for a natural meandering effect.
+          vine.angle += (Math.random() - 0.5) * 0.3;
+          let newX = vine.x + stepSize * Math.cos(vine.angle);
+          let newY = vine.y + stepSize * Math.sin(vine.angle);
+
+          // Draw the vine segment as an SVG line.
+          let line = createSVGElement("line", {
+            x1: oldX,
+            y1: oldY,
+            x2: newX,
+            y2: newY,
+            stroke: "#0a0",
+            "stroke-width": 3,
+            "stroke-linecap": "round"
+          });
+          canvas.appendChild(line);
+
+          // Occasionally add a leaf (ellipse) along the vine.
+          if (Math.random() < vineProbabilityLeaf) {
+            let leaf = createSVGElement("ellipse", {
+              cx: newX + 5,
+              cy: newY + 5,
+              rx: 10,
+              ry: 5,
+              fill: "#0f0",
+              transform: "rotate(" + (Math.random() * 360) + " " + newX + " " + newY + ")"
+            });
+            canvas.appendChild(leaf);
+          }
+
+          // Occasionally add a flower (circle) with a vivid color.
+          if (Math.random() < vineProbabilityFlower) {
+            let flower = createSVGElement("circle", {
+              cx: newX,
+              cy: newY,
+              r: 8 + Math.random() * 2,
+              fill: randomVividColor(),
+              stroke: "#fff",
+              "stroke-width": 1
+            });
+            canvas.appendChild(flower);
+          }
+
+          // Update the vine’s current position.
+          vine.x = newX;
+          vine.y = newY;
+
+          // Occasionally branch off a new vine only if we have fewer than maxVines.
+          if (Math.random() < vineProbabilityBranch && vines.length < maxVines) {
+            vines.push({
+              x: newX,
+              y: newY,
+              angle: vine.angle + (Math.random() - 0.5)
+            });
+          }
+
+          // Remove the vine if it grows off-screen (with a margin).
+          if (newX < -50 || newX > width + 50 || newY < -50 || newY > height + 50) {
+            vines.splice(i, 1);
+          }
+        }
+        // Replenish vines if fewer than maxVines are active.
+        while (vines.length < maxVines) {
+          vines.push(spawnVine());
+        }
+
+        // Remove older SVG elements if over the limit.
+        trimSVGElements();
+
+        requestAnimationFrame(update);
+      }
+      update();
+
+      // Adjust the SVG canvas size when the window is resized.
+      window.addEventListener("resize", function(){
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.setAttribute("width", width);
+        canvas.setAttribute("height", height);
+      });
+    })();
+  </script>
+</body>
+</html>
