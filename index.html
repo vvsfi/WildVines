@@ -20,7 +20,7 @@
       width: 100%;
       height: 100%;
     }
-    /* Center overlay text: fixed translucent black, always on top */
+    /* Center overlay text with SVG filter for the wavy effect */
     #overlay {
       position: absolute;
       top: 50%;
@@ -32,10 +32,21 @@
       color: rgba(0, 0, 0, 0.5);
       pointer-events: none;
       z-index: 1000;
+      filter: url(#wavy);
     }
   </style>
 </head>
 <body>
+  <!-- Define an SVG filter that creates a wavy distortion effect -->
+  <svg width="0" height="0">
+    <filter id="wavy">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="3" result="noise">
+        <animate attributeName="baseFrequency" dur="5s" values="0.02;0.05;0.02" repeatCount="indefinite" />
+      </feTurbulence>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" />
+    </filter>
+  </svg>
+
   <!-- SVG canvas for drawing vines -->
   <svg id="canvas"></svg>
   <!-- Center overlay text -->
@@ -50,7 +61,7 @@
       canvas.setAttribute("width", width);
       canvas.setAttribute("height", height);
 
-      // Configuration: only 10 vines active and a maximum of 250 SVG elements.
+      // Configuration: 25 vines, with many SVG elements.
       const maxVines = 25;
       const maxSVGElements = 25000;
       const stepSize = 4;
@@ -88,7 +99,7 @@
         vines.push(spawnVine());
       }
 
-      // Immediately remove oldest SVG elements until the total count is below the limit.
+      // Remove oldest SVG elements if exceeding the limit.
       function trimSVGElements() {
         while (canvas.childNodes.length > maxSVGElements) {
           canvas.removeChild(canvas.firstChild);
@@ -102,7 +113,7 @@
           let oldX = vine.x;
           let oldY = vine.y;
 
-          // Slight random variation to the angle for a natural meandering effect.
+          // Slight random variation for a natural meandering effect.
           vine.angle += (Math.random() - 0.5) * 0.3;
           let newX = vine.x + stepSize * Math.cos(vine.angle);
           let newY = vine.y + stepSize * Math.sin(vine.angle);
@@ -149,7 +160,7 @@
           vine.x = newX;
           vine.y = newY;
 
-          // Occasionally branch off a new vine only if we have fewer than maxVines.
+          // Occasionally branch off a new vine.
           if (Math.random() < vineProbabilityBranch && vines.length < maxVines) {
             vines.push({
               x: newX,
@@ -158,7 +169,7 @@
             });
           }
 
-          // Remove the vine if it grows off-screen (with a margin).
+          // Remove the vine if it grows off-screen.
           if (newX < -50 || newX > width + 50 || newY < -50 || newY > height + 50) {
             vines.splice(i, 1);
           }
@@ -168,14 +179,14 @@
           vines.push(spawnVine());
         }
 
-        // Remove older SVG elements if over the limit.
+        // Trim old SVG elements if necessary.
         trimSVGElements();
 
         requestAnimationFrame(update);
       }
       update();
 
-      // Adjust the SVG canvas size when the window is resized.
+      // Adjust canvas size on window resize.
       window.addEventListener("resize", function(){
         width = window.innerWidth;
         height = window.innerHeight;
