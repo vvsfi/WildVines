@@ -1,199 +1,685 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>@saarinenkoti.fi - Wild Vines</title>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      width: 100%;
-      height: 100%;
-      background-color: #fff;
-    }
-    /* Full screen SVG canvas */
-    #canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-    }
-    /* Center overlay text with SVG filter for the wavy effect */
-    #overlay {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 48px;
-      font-family: sans-serif;
-      font-weight: bold;
-      color: rgba(0, 0, 0, 0.5);
-      pointer-events: none;
-      z-index: 1000;
-      filter: url(#wavy);
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wild Vines — @saarinenkoti.fi</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{overflow:hidden;background:#030010;font-family:'DM Sans',sans-serif;color:#d8d4cc;cursor:grab}
+body.dragging{cursor:grabbing}
+canvas{display:block}
+.ov{position:fixed;z-index:10;pointer-events:none}
+.brand{top:32px;left:40px}
+.brand h1{font-family:'Cormorant Garamond',serif;font-weight:300;font-size:38px;letter-spacing:2px;color:rgba(220,215,205,0.8);text-shadow:0 0 50px rgba(80,40,160,0.25);line-height:1}
+.brand p{font-size:10px;letter-spacing:5px;text-transform:uppercase;color:rgba(150,130,190,0.4);margin-top:6px}
+.foot{bottom:28px;left:50%;transform:translateX(-50%)}
+.foot a{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;letter-spacing:2px;color:rgba(150,130,190,0.35);text-decoration:none;pointer-events:auto;transition:color .3s}
+.foot a:hover{color:rgba(190,170,230,0.7)}
+.vig{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:4;pointer-events:none;background:radial-gradient(ellipse at center,transparent 35%,rgba(3,0,16,0.8)100%)}
+.cn{position:fixed;z-index:10;pointer-events:none;width:20px;height:20px;border-color:rgba(120,100,180,0.12);border-style:solid;border-width:0}
+.cn.tl{top:20px;left:20px;border-top-width:1px;border-left-width:1px}
+.cn.tr{top:20px;right:20px;border-top-width:1px;border-right-width:1px}
+.cn.bl{bottom:20px;left:20px;border-bottom-width:1px;border-left-width:1px}
+.cn.br{bottom:20px;right:20px;border-bottom-width:1px;border-right-width:1px}
+.ld{position:fixed;inset:0;background:#030010;z-index:100;display:flex;align-items:center;justify-content:center;transition:opacity 1.8s}
+.ld.go{opacity:0;pointer-events:none}
+.ld span{font-family:'Cormorant Garamond',serif;font-weight:300;font-size:24px;color:rgba(150,130,190,0.5);animation:pu 1.3s ease-in-out infinite}
+@keyframes pu{0%,100%{opacity:.3}50%{opacity:1}}
+</style>
 </head>
 <body>
-  <!-- Define an SVG filter that creates a wavy distortion effect -->
-  <svg width="0" height="0">
-    <filter id="wavy">
-      <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="3" result="noise">
-        <animate attributeName="baseFrequency" dur="5s" values="0.02;0.05;0.02" repeatCount="indefinite" />
-      </feTurbulence>
-      <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" />
-    </filter>
-  </svg>
+<div class="ld" id="ld"><span>Wild Vines</span></div>
+<div class="vig"></div>
+<div class="cn tl"></div><div class="cn tr"></div><div class="cn bl"></div><div class="cn br"></div>
+<div class="ov brand"><h1>Wild Vines</h1><p>@ saarinenkoti.fi</p></div>
+<div class="ov foot"><a href="https://saarinenkoti.fi">@saarinenkoti.fi</a></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+"use strict";
 
-  <!-- SVG canvas for drawing vines -->
-  <svg id="canvas"></svg>
-  <!-- Center overlay text -->
-  <div id="overlay">@saarinenkoti.fi</div>
+// ═══ RNG ═══
+let _s=Date.now()^(Math.random()*0xFFFFFF|0);
+function rand(){_s^=_s<<13;_s^=_s>>17;_s^=_s<<5;return((_s<0?~_s+1:_s)%10000)/10000}
+function rr(a,b){return a+rand()*(b-a)}
+function ri(a,b){return Math.floor(rr(a,b+1))}
 
-  <script>
-    (function(){
-      const svgns = "http://www.w3.org/2000/svg";
-      const canvas = document.getElementById("canvas");
-      let width = window.innerWidth;
-      let height = window.innerHeight;
-      canvas.setAttribute("width", width);
-      canvas.setAttribute("height", height);
+// ═══ RENDERER ═══
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:"high-performance"});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.1;
+renderer.outputEncoding=THREE.sRGBEncoding;
+document.body.appendChild(renderer.domElement);
 
-      // Configuration: 25 vines, with many SVG elements.
-      const maxVines = 25;
-      const maxSVGElements = 25000;
-      const stepSize = 4;
-      const vineProbabilityLeaf = 0.1;
-      const vineProbabilityFlower = 0.03;
-      const vineProbabilityBranch = 0.005;
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x030010);
+scene.fog=new THREE.FogExp2(0x030010,0.006);
 
-      let vines = [];
+const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,500);
+camera.position.set(0,0,0.001);
 
-      // Returns a random vivid color (for flowers) in HSLA format.
-      function randomVividColor() {
-        return "hsla(" + Math.floor(Math.random() * 360) + ", 90%, 50%, 0.8)";
+// ═══ ORBIT ═══
+let drag=false,px=0,py=0,theta=Math.random()*6.28,phi=Math.PI*0.5;
+function oD(x,y){drag=true;px=x;py=y;document.body.classList.add('dragging')}
+function oU(){drag=false;document.body.classList.remove('dragging')}
+function oM(x,y){if(!drag)return;theta-=(x-px)*0.003;phi=Math.max(0.15,Math.min(Math.PI-0.15,phi-(y-py)*0.003));px=x;py=y}
+renderer.domElement.addEventListener('mousedown',e=>oD(e.clientX,e.clientY));
+window.addEventListener('mouseup',oU);
+window.addEventListener('mousemove',e=>oM(e.clientX,e.clientY));
+renderer.domElement.addEventListener('touchstart',e=>{e.preventDefault();oD(e.touches[0].clientX,e.touches[0].clientY)},{passive:false});
+window.addEventListener('touchend',oU);
+window.addEventListener('touchmove',e=>oM(e.touches[0].clientX,e.touches[0].clientY));
+
+// ═══ LIGHTS ═══
+scene.add(new THREE.AmbientLight(0x1a1030,1.2));
+const dl=new THREE.DirectionalLight(0xeeddcc,0.4);dl.position.set(20,30,-15);scene.add(dl);
+const pl1=new THREE.PointLight(0x5030a0,0.3,150);pl1.position.set(-25,-10,30);scene.add(pl1);
+const pl2=new THREE.PointLight(0xa06030,0.2,120);pl2.position.set(20,20,-25);scene.add(pl2);
+
+// ═══ STARS ═══
+{const n=5000,p=new Float32Array(n*3);
+for(let i=0;i<n;i++){const t=rand()*6.28,h=Math.acos(2*rand()-1),r=100+rand()*140;
+p[i*3]=r*Math.sin(h)*Math.cos(t);p[i*3+1]=r*Math.sin(h)*Math.sin(t);p[i*3+2]=r*Math.cos(h)}
+const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(p,3));
+scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xffffff,size:0.18,transparent:true,opacity:0.5,sizeAttenuation:true})))}
+
+// ═══ AURORA BOREALIS ═══
+const auroraVS=`
+varying vec2 vUv;
+void main(){vUv=uv;gl_Position=projectionMatrix*viewMatrix*modelMatrix*vec4(position,1.0);}`;
+const auroraFS=`
+uniform float uTime;
+uniform vec3 uColor1,uColor2,uColor3;
+uniform float uSpeed,uIntensity;
+varying vec2 vUv;
+vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec2 mod289(vec2 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec3 permute(vec3 x){return mod289(((x*34.0)+1.0)*x);}
+float snoise(vec2 v){
+  const vec4 C=vec4(0.211324865405187,0.366025403784439,-0.577350269189626,0.024390243902439);
+  vec2 i=floor(v+dot(v,C.yy));vec2 x0=v-i+dot(i,C.xx);
+  vec2 i1=(x0.x>x0.y)?vec2(1,0):vec2(0,1);
+  vec4 x12=x0.xyxy+C.xxzz;x12.xy-=i1;i=mod289(i);
+  vec3 p=permute(permute(i.y+vec3(0,i1.y,1))+i.x+vec3(0,i1.x,1));
+  vec3 m=max(0.5-vec3(dot(x0,x0),dot(x12.xy,x12.xy),dot(x12.zw,x12.zw)),0.0);
+  m=m*m;m=m*m;
+  vec3 x=2.0*fract(p*C.www)-1.0;vec3 h=abs(x)-0.5;vec3 ox=floor(x+0.5);vec3 a0=x-ox;
+  m*=1.79284291400159-0.85373472095314*(a0*a0+h*h);
+  vec3 g;g.x=a0.x*x0.x+h.x*x0.y;g.yz=a0.yz*x12.xz+h.yz*x12.yw;
+  return 130.0*dot(m,g);}
+void main(){
+  vec2 uv=vUv;float t=uTime*uSpeed;
+  float w1=snoise(vec2(uv.x*3.0+t*0.3,uv.y*1.5+t*0.1))*0.5+0.5;
+  float w2=snoise(vec2(uv.x*5.0-t*0.2,uv.y*2.0+t*0.15))*0.5+0.5;
+  float w3=snoise(vec2(uv.x*8.0+t*0.15,uv.y*3.0-t*0.08))*0.5+0.5;
+  float curtain=pow(w1*w2,1.5)*1.8+pow(w3,2.0)*0.6;
+  float yF=smoothstep(0.0,0.25,uv.y)*smoothstep(1.0,0.6,uv.y);
+  float xF=smoothstep(0.0,0.15,uv.x)*smoothstep(1.0,0.85,uv.x);
+  curtain*=yF*xF;
+  float cm1=snoise(vec2(uv.x*2.0+t*0.2,uv.y*0.8))*0.5+0.5;
+  float cm2=snoise(vec2(uv.x*1.5-t*0.15,uv.y*1.2+t*0.1))*0.5+0.5;
+  vec3 col=mix(uColor1,uColor2,cm1);col=mix(col,uColor3,cm2*0.5);
+  col+=vec3(0.2,0.25,0.15)*pow(curtain,2.5);
+  float alpha=curtain*uIntensity;
+  gl_FragColor=vec4(col*alpha*3.5,alpha*1.4);}`;
+
+const auroraMats=[];
+const auroraC=[
+  {c1:[0.1,1,0.4],c2:[0,0.5,1],c3:[0.6,0.1,1],i:0.45,sp:0.4,d:95,y:30,r:0,w:180,h:70},
+  {c1:[0,0.8,0.9],c2:[0.4,0,1],c3:[0,1,0.6],i:0.38,sp:0.35,d:100,y:-20,r:Math.PI*0.7,w:160,h:60},
+  {c1:[1,0.2,0.5],c2:[0.5,0,1],c3:[0.1,0.4,1],i:0.35,sp:0.45,d:90,y:10,r:Math.PI*1.3,w:150,h:55},
+  {c1:[0.2,0.9,1],c2:[0,1,0.5],c3:[0.8,0.3,1],i:0.3,sp:0.3,d:105,y:-35,r:Math.PI*0.3,w:140,h:50},
+  {c1:[0.6,1,0.2],c2:[0,0.7,1],c3:[1,0.1,0.8],i:0.4,sp:0.38,d:98,y:45,r:Math.PI*1.7,w:170,h:65},
+];
+for(const a of auroraC){
+  const mat=new THREE.ShaderMaterial({vertexShader:auroraVS,fragmentShader:auroraFS,
+    uniforms:{uTime:{value:0},uColor1:{value:new THREE.Vector3(...a.c1)},uColor2:{value:new THREE.Vector3(...a.c2)},
+    uColor3:{value:new THREE.Vector3(...a.c3)},uSpeed:{value:a.sp},uIntensity:{value:a.i}},
+    transparent:true,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending});
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(a.w,a.h),mat);
+  m.position.set(Math.cos(a.r)*a.d,a.y,Math.sin(a.r)*a.d);
+  m.lookAt(0,a.y*0.3,0);scene.add(m);auroraMats.push(mat);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INSTANCED VINE SYSTEM — maximum performance
+//  All vine segments, leaves, flowers are instanced meshes.
+//  Vine data is stored in flat arrays.
+// ═══════════════════════════════════════════════════════════
+
+const MAX_SEGS=60000;
+const MAX_LEAVES=15000;
+const MAX_FLOWERS=5000;
+const MAX_VINES=600;
+const SPAWN_RADIUS=45;
+const UP=new THREE.Vector3(0,1,0);
+
+// Instanced segment cylinders
+const segGeo=new THREE.CylinderGeometry(1,1,1,4,1);
+segGeo.translate(0,0.5,0);
+const segMat=new THREE.MeshStandardMaterial({roughness:0.7,metalness:0.05});
+const segIM=new THREE.InstancedMesh(segGeo,segMat,MAX_SEGS);
+segIM.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+segIM.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(MAX_SEGS*3),3);
+segIM.count=0;scene.add(segIM);
+
+// Instanced leaves
+const leafGeo=new THREE.PlaneGeometry(1,1);
+const leafMat=new THREE.MeshStandardMaterial({roughness:0.55,metalness:0,side:THREE.DoubleSide});
+const leafIM=new THREE.InstancedMesh(leafGeo,leafMat,MAX_LEAVES);
+leafIM.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+leafIM.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(MAX_LEAVES*3),3);
+leafIM.count=0;scene.add(leafIM);
+
+// Instanced flowers (small spheres with emissive)
+const flGeo=new THREE.SphereGeometry(1,5,5);
+const flMat=new THREE.MeshStandardMaterial({roughness:0.35,metalness:0.1,emissive:new THREE.Color(0x222222),emissiveIntensity:0.4});
+const flIM=new THREE.InstancedMesh(flGeo,flMat,MAX_FLOWERS);
+flIM.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+flIM.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(MAX_FLOWERS*3),3);
+flIM.count=0;scene.add(flIM);
+
+// Flash particles (spawn points)
+const flashGeo=new THREE.SphereGeometry(1,6,6);
+const flashMat=new THREE.MeshBasicMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending});
+const flashes=[];
+
+// ═══ DATA ARRAYS ═══
+// Segments: flat typed arrays
+let segCount=0;
+const segFrom=new Float32Array(MAX_SEGS*3);
+const segTo=new Float32Array(MAX_SEGS*3);
+const segColor=new Float32Array(MAX_SEGS*3);
+const segAlpha=new Float32Array(MAX_SEGS);
+const segThick=new Float32Array(MAX_SEGS);
+const segVineId=new Int32Array(MAX_SEGS);
+
+// Leaves
+let leafCount=0;
+const leafPos=new Float32Array(MAX_LEAVES*3);
+const leafColor=new Float32Array(MAX_LEAVES*3);
+const leafAlpha=new Float32Array(MAX_LEAVES);
+const leafScale=new Float32Array(MAX_LEAVES*2); // w,h
+const leafRot=new Float32Array(MAX_LEAVES*3);
+const leafVineId=new Int32Array(MAX_LEAVES);
+const leafSwayOff=new Float32Array(MAX_LEAVES);
+const leafSwaySpd=new Float32Array(MAX_LEAVES);
+
+// Flowers
+let flowerCount=0;
+const flPos=new Float32Array(MAX_FLOWERS*3);
+const flColor=new Float32Array(MAX_FLOWERS*3);
+const flAlpha=new Float32Array(MAX_FLOWERS);
+const flSize=new Float32Array(MAX_FLOWERS);
+const flVineId=new Int32Array(MAX_FLOWERS);
+const flPulseOff=new Float32Array(MAX_FLOWERS);
+
+// ═══ VINE OBJECT ═══
+const vines=[];
+let vineUID=0;
+
+function randomColor(){
+  const h=rand();
+  return{
+    vine:new THREE.Color().setHSL(h,0.4+rand()*0.3,0.15+rand()*0.15),
+    leaf1:new THREE.Color().setHSL((h+0.15+rand()*0.15)%1,0.4+rand()*0.25,0.2+rand()*0.15),
+    leaf2:new THREE.Color().setHSL((h+0.3+rand()*0.1)%1,0.35+rand()*0.2,0.18+rand()*0.12),
+    fl1:new THREE.Color().setHSL((h+0.45+rand()*0.2)%1,0.6+rand()*0.3,0.4+rand()*0.25),
+    fl2:new THREE.Color().setHSL((h+0.6+rand()*0.15)%1,0.55+rand()*0.3,0.35+rand()*0.2),
+    flash:new THREE.Color().setHSL(h,0.8,0.7),
+  };
+}
+
+class VineData{
+  constructor(origin,dir){
+    this.id=vineUID++;
+    this.alive=true;
+    this.origin=origin.clone();
+    this.tipPos=origin.clone();
+    this.tipDir=dir.clone().normalize();
+    this.totalLen=0;
+    this.maxLen=4+rand()*12;
+    this.stepSize=0.04+rand()*0.04;
+    this.thickness=0.015+rand()*0.03;
+    this.curlFreq=1.5+rand()*3;
+    this.curlAmp=0.06+rand()*0.2;
+    this.pal=randomColor();
+    this.leafInterval=ri(4,10);
+    this.flowerInterval=ri(15,35);
+    this.stepCount=0;
+    this.segStart=segCount; // where my segs start in the global array
+    this.segLen=0;
+    this.leafStart=leafCount;
+    this.leafLen=0;
+    this.flStart=flowerCount;
+    this.flLen=0;
+    this.age=0;
+    this.withering=false;
+    this.witherAge=0;
+    this.witherDuration=120+ri(0,100);
+    this.witherStartAge=300+ri(0,400);
+    this.witherFromTip=false; // false=from root, true=from collision point
+    this.collisionSegIdx=-1; // segment index where collision happened
+    this.growAccum=0;
+    this.branchDepth=0;
+  }
+}
+
+// ═══ SPATIAL GRID for collision detection ═══
+const GRID_CELL=1.5;
+const grid=new Map();
+
+function gridKey(x,y,z){
+  return((x/GRID_CELL|0)+500)*1000000+((y/GRID_CELL|0)+500)*1000+((z/GRID_CELL|0)+500);
+}
+
+function gridInsert(x,y,z,vineId,segIdx){
+  const k=gridKey(x,y,z);
+  let cell=grid.get(k);
+  if(!cell){cell=[];grid.set(k,cell)}
+  cell.push(vineId|(segIdx<<16));
+}
+
+function gridQuery(x,y,z,skipVineId){
+  // Check 3x3x3 neighborhood
+  const cx=x/GRID_CELL|0,cy=y/GRID_CELL|0,cz=z/GRID_CELL|0;
+  for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)for(let dz=-1;dz<=1;dz++){
+    const k=((cx+dx+500)*1000000)+((cy+dy+500)*1000)+((cz+dz+500));
+    const cell=grid.get(k);
+    if(!cell)continue;
+    for(const packed of cell){
+      const vid=packed&0xFFFF;
+      if(vid!==skipVineId) return vid;
+    }
+  }
+  return-1;
+}
+
+// ═══ GROW ═══
+function growVine(vine,time){
+  if(!vine.alive||vine.totalLen>=vine.maxLen||vine.withering)return;
+  if(segCount>=MAX_SEGS-1)return;
+
+  const tp=vine.tipPos;
+  const td=vine.tipDir;
+
+  // Curl
+  const curl=new THREE.Vector3(
+    Math.sin(tp.y*vine.curlFreq+time*0.4+vine.id*0.7)*vine.curlAmp,
+    Math.cos(tp.x*vine.curlFreq*0.8+time*0.3+vine.id*0.3)*vine.curlAmp*0.7,
+    Math.sin(tp.z*vine.curlFreq*0.9+time*0.35+vine.id*0.5)*vine.curlAmp
+  );
+  const wobble=new THREE.Vector3((rand()-.5)*0.03,(rand()-.5)*0.03,(rand()-.5)*0.03);
+  const nd=td.clone().multiplyScalar(0.85).add(curl).add(wobble).normalize();
+  const np=tp.clone().add(nd.clone().multiplyScalar(vine.stepSize));
+
+  // Collision check
+  const hitVine=gridQuery(np.x,np.y,np.z,vine.id);
+  if(hitVine>=0){
+    // Collision! Both vines wither from collision point
+    vine.withering=true;
+    vine.witherAge=0;
+    vine.witherFromTip=true;
+    vine.collisionSegIdx=vine.segLen;
+    // Find other vine and trigger wither too
+    for(const ov of vines){
+      if(ov.id===(hitVine&0xFFFF)&&ov.alive&&!ov.withering){
+        ov.withering=true;
+        ov.witherAge=0;
+        ov.witherFromTip=false; // wither from root for variety
+        break;
       }
+    }
+    return;
+  }
 
-      // Utility: create an SVG element with the given attributes.
-      function createSVGElement(tag, attrs) {
-        const elem = document.createElementNS(svgns, tag);
-        for (let attr in attrs) {
-          elem.setAttribute(attr, attrs[attr]);
-        }
-        return elem;
-      }
+  // Add segment
+  const si=segCount;
+  const i3=si*3;
+  segFrom[i3]=tp.x;segFrom[i3+1]=tp.y;segFrom[i3+2]=tp.z;
+  segTo[i3]=np.x;segTo[i3+1]=np.y;segTo[i3+2]=np.z;
+  const vc=vine.pal.vine;
+  segColor[i3]=vc.r;segColor[i3+1]=vc.g;segColor[i3+2]=vc.b;
+  // Taper
+  const t=vine.totalLen/vine.maxLen;
+  segThick[si]=vine.thickness*Math.pow(1-t,0.4)*(1+Math.sin(t*20+vine.id)*0.12);
+  segAlpha[si]=1;
+  segVineId[si]=vine.id;
+  segCount++;
+  vine.segLen++;
 
-      // Spawn a new vine starting from a random position along the bottom edge.
-      function spawnVine() {
-        return {
-          x: Math.random() * width,
-          y: height,
-          angle: -Math.PI / 2 + (Math.random() - 0.5) * 0.5 // mostly upward with a slight twist
-        };
-      }
+  // Grid insert
+  gridInsert(np.x,np.y,np.z,vine.id,vine.segLen);
 
-      // Seed initial vines.
-      for (let i = 0; i < maxVines; i++){
-        vines.push(spawnVine());
-      }
+  vine.tipPos=np;
+  vine.tipDir=nd;
+  vine.totalLen+=vine.stepSize;
+  vine.stepCount++;
 
-      // Remove oldest SVG elements if exceeding the limit.
-      function trimSVGElements() {
-        while (canvas.childNodes.length > maxSVGElements) {
-          canvas.removeChild(canvas.firstChild);
-        }
-      }
+  // Leaf
+  if(vine.stepCount%vine.leafInterval===0&&rand()<0.55&&leafCount<MAX_LEAVES){
+    const li=leafCount;
+    const li3=li*3;
+    const side=new THREE.Vector3(rand()-.5,rand()-.5,rand()-.5).normalize();
+    leafPos[li3]=np.x+side.x*0.04;leafPos[li3+1]=np.y+side.y*0.04;leafPos[li3+2]=np.z+side.z*0.04;
+    const lc=rand()>0.4?vine.pal.leaf1:vine.pal.leaf2;
+    leafColor[li3]=lc.r;leafColor[li3+1]=lc.g;leafColor[li3+2]=lc.b;
+    const sizes=[[0.18,0.12],[0.1,0.25],[0.24,0.08],[0.14,0.18],[0.04,0.28],[0.2,0.15]];
+    const sz=sizes[ri(0,5)];
+    const sc=0.5+rand()*0.7;
+    leafScale[li*2]=sz[0]*sc;leafScale[li*2+1]=sz[1]*sc;
+    leafRot[li3]=side.x*2;leafRot[li3+1]=rand()*6.28;leafRot[li3+2]=side.z*1.5;
+    leafAlpha[li]=1;
+    leafVineId[li]=vine.id;
+    leafSwayOff[li]=rand()*6.28;
+    leafSwaySpd[li]=0.5+rand()*1.5;
+    leafCount++;
+    vine.leafLen++;
+  }
 
-      // Main update loop to grow vines.
-      function update() {
-        for (let i = vines.length - 1; i >= 0; i--) {
-          let vine = vines[i];
-          let oldX = vine.x;
-          let oldY = vine.y;
+  // Flower
+  if(vine.stepCount%vine.flowerInterval===0&&rand()<0.4&&vine.stepCount>8&&flowerCount<MAX_FLOWERS){
+    const fi=flowerCount;
+    const fi3=fi*3;
+    flPos[fi3]=np.x;flPos[fi3+1]=np.y;flPos[fi3+2]=np.z;
+    const fc=rand()>0.5?vine.pal.fl1:vine.pal.fl2;
+    flColor[fi3]=fc.r;flColor[fi3+1]=fc.g;flColor[fi3+2]=fc.b;
+    flSize[fi]=0.03+rand()*0.05;
+    flAlpha[fi]=1;
+    flVineId[fi]=vine.id;
+    flPulseOff[fi]=rand()*6.28;
+    flowerCount++;
+    vine.flLen++;
+  }
 
-          // Slight random variation for a natural meandering effect.
-          vine.angle += (Math.random() - 0.5) * 0.3;
-          let newX = vine.x + stepSize * Math.cos(vine.angle);
-          let newY = vine.y + stepSize * Math.sin(vine.angle);
+  // Branch
+  if(rand()<0.005&&vine.stepCount>6&&vine.branchDepth<2&&vine.totalLen<vine.maxLen*0.6&&vines.length<MAX_VINES){
+    const perp=new THREE.Vector3(rand()-.5,rand()-.5,rand()-.5).normalize();
+    const bd=nd.clone().add(perp.multiplyScalar(0.7)).normalize();
+    const bv=new VineData(np,bd);
+    bv.maxLen=vine.maxLen*0.3*(0.5+rand()*0.5);
+    bv.thickness=vine.thickness*0.6;
+    bv.pal=vine.pal;
+    bv.branchDepth=vine.branchDepth+1;
+    vines.push(bv);
+  }
+}
 
-          // Draw the vine segment as an SVG line.
-          let line = createSVGElement("line", {
-            x1: oldX,
-            y1: oldY,
-            x2: newX,
-            y2: newY,
-            stroke: "#0a0",
-            "stroke-width": 3,
-            "stroke-linecap": "round"
-          });
-          canvas.appendChild(line);
+// ═══ WITHERING ═══
+function processWither(vine){
+  if(!vine.withering)return;
+  vine.witherAge++;
+  const p=Math.min(1,vine.witherAge/vine.witherDuration);
 
-          // Occasionally add a leaf (ellipse) along the vine.
-          if (Math.random() < vineProbabilityLeaf) {
-            let leaf = createSVGElement("ellipse", {
-              cx: newX + 5,
-              cy: newY + 5,
-              rx: 10,
-              ry: 5,
-              fill: "#0f0",
-              transform: "rotate(" + (Math.random() * 360) + " " + newX + " " + newY + ")"
-            });
-            canvas.appendChild(leaf);
-          }
+  // Fade segments
+  const sStart=vine.segStart;
+  const sEnd=sStart+vine.segLen;
+  for(let i=sStart;i<sEnd&&i<segCount;i++){
+    const localT=(i-sStart)/Math.max(vine.segLen,1);
+    let fade;
+    if(vine.witherFromTip){
+      // Wither from tip backward
+      fade=(1-localT)<p?Math.max(0,1-((p-(1-localT))*6)):1;
+    }else{
+      // Wither from root forward
+      fade=localT<p?Math.max(0,1-((p-localT)*6)):1;
+    }
+    segAlpha[i]=fade;
+  }
 
-          // Occasionally add a flower (circle) with a vivid color.
-          if (Math.random() < vineProbabilityFlower) {
-            let flower = createSVGElement("circle", {
-              cx: newX + 4,
-              cy: newY + 4,
-              r: 8 + Math.random() * 2,
-              fill: randomVividColor(),
-              stroke: "#fff",
-              "stroke-width": 1
-            });
-            canvas.appendChild(flower);
-          }
+  // Fade leaves
+  const lStart=vine.leafStart;
+  const lEnd=lStart+vine.leafLen;
+  for(let i=lStart;i<lEnd&&i<leafCount;i++){
+    leafAlpha[i]=Math.max(0,1-p*1.8);
+  }
 
-          // Update the vine’s current position.
-          vine.x = newX;
-          vine.y = newY;
+  // Fade flowers
+  const fStart=vine.flStart;
+  const fEnd=fStart+vine.flLen;
+  for(let i=fStart;i<fEnd&&i<flowerCount;i++){
+    flAlpha[i]=Math.max(0,1-p*2);
+  }
 
-          // Occasionally branch off a new vine.
-          if (Math.random() < vineProbabilityBranch && vines.length < maxVines) {
-            vines.push({
-              x: newX,
-              y: newY,
-              angle: vine.angle + (Math.random() - 0.5)
-            });
-          }
+  if(p>=1) vine.alive=false;
+}
 
-          // Remove the vine if it grows off-screen.
-          if (newX < -50 || newX > width + 50 || newY < -50 || newY > height + 50) {
-            vines.splice(i, 1);
-          }
-        }
-        // Replenish vines if fewer than maxVines are active.
-        while (vines.length < maxVines) {
-          vines.push(spawnVine());
-        }
+// ═══ SPAWN FLASH ═══
+function spawnFlash(pos,color){
+  const mat=flashMat.clone();
+  mat.color=color.clone();
+  const mesh=new THREE.Mesh(flashGeo,mat);
+  mesh.position.copy(pos);
+  mesh.scale.setScalar(0.01);
+  scene.add(mesh);
+  flashes.push({mesh,age:0,maxAge:40,maxScale:0.4+rand()*0.3});
+}
 
-        // Trim old SVG elements if necessary.
-        trimSVGElements();
+function spawnVine(){
+  if(vines.length>=MAX_VINES||segCount>=MAX_SEGS-200)return;
+  const t=rand()*6.28,p=Math.acos(2*rand()-1),r=5+rand()*SPAWN_RADIUS;
+  const pos=new THREE.Vector3(r*Math.sin(p)*Math.cos(t),r*Math.sin(p)*Math.sin(t),r*Math.cos(p));
+  const dir=new THREE.Vector3(rand()-.5,rand()-.5,rand()-.5).normalize();
+  const v=new VineData(pos,dir);
+  vines.push(v);
+  spawnFlash(pos,v.pal.flash);
+}
 
-        requestAnimationFrame(update);
-      }
-      update();
+// ═══ UPDATE INSTANCES ═══
+const _m=new THREE.Matrix4();
+const _p1=new THREE.Vector3();
+const _p2=new THREE.Vector3();
+const _d=new THREE.Vector3();
+const _q=new THREE.Quaternion();
+const _s2=new THREE.Vector3();
+const _c=new THREE.Color();
 
-      // Adjust canvas size on window resize.
-      window.addEventListener("resize", function(){
-        width = window.innerWidth;
-        height = window.innerHeight;
-        canvas.setAttribute("width", width);
-        canvas.setAttribute("height", height);
-      });
-    })();
-  </script>
+function updateInstances(time){
+  // Segments
+  const sc2=Math.min(segCount,MAX_SEGS);
+  segIM.count=sc2;
+  for(let i=0;i<sc2;i++){
+    const i3=i*3;
+    const a=segAlpha[i];
+    if(a<=0.01){_m.makeScale(0,0,0);segIM.setMatrixAt(i,_m);segIM.setColorAt(i,_c.setRGB(0,0,0));continue}
+    _p1.set(segFrom[i3],segFrom[i3+1],segFrom[i3+2]);
+    _p2.set(segTo[i3],segTo[i3+1],segTo[i3+2]);
+    _d.subVectors(_p2,_p1);
+    const len=_d.length();
+    if(len<0.0001){_m.makeScale(0,0,0);segIM.setMatrixAt(i,_m);segIM.setColorAt(i,_c.setRGB(0,0,0));continue}
+    _d.normalize();
+    _q.setFromUnitVectors(UP,_d);
+    const th=segThick[i]*a;
+    _m.compose(_p1,_q,_s2.set(th,len,th));
+    segIM.setMatrixAt(i,_m);
+    segIM.setColorAt(i,_c.setRGB(segColor[i3]*a,segColor[i3+1]*a,segColor[i3+2]*a));
+  }
+  segIM.instanceMatrix.needsUpdate=true;
+  if(segIM.instanceColor)segIM.instanceColor.needsUpdate=true;
+
+  // Leaves
+  const lc2=Math.min(leafCount,MAX_LEAVES);
+  leafIM.count=lc2;
+  for(let i=0;i<lc2;i++){
+    const i3=i*3,i2=i*2;
+    const a=leafAlpha[i];
+    if(a<=0.01){_m.makeScale(0,0,0);leafIM.setMatrixAt(i,_m);leafIM.setColorAt(i,_c.setRGB(0,0,0));continue}
+    const sway=Math.sin(time*leafSwaySpd[i]+leafSwayOff[i])*0.1;
+    _q.setFromEuler(new THREE.Euler(leafRot[i3]+sway,leafRot[i3+1],leafRot[i3+2]+sway*0.5));
+    _m.compose(
+      _p1.set(leafPos[i3],leafPos[i3+1],leafPos[i3+2]),
+      _q,
+      _s2.set(leafScale[i2]*a,leafScale[i2+1]*a,1)
+    );
+    leafIM.setMatrixAt(i,_m);
+    leafIM.setColorAt(i,_c.setRGB(leafColor[i3]*a,leafColor[i3+1]*a,leafColor[i3+2]*a));
+  }
+  leafIM.instanceMatrix.needsUpdate=true;
+  if(leafIM.instanceColor)leafIM.instanceColor.needsUpdate=true;
+
+  // Flowers
+  const fc2=Math.min(flowerCount,MAX_FLOWERS);
+  flIM.count=fc2;
+  for(let i=0;i<fc2;i++){
+    const i3=i*3;
+    const a=flAlpha[i];
+    if(a<=0.01){_m.makeScale(0,0,0);flIM.setMatrixAt(i,_m);flIM.setColorAt(i,_c.setRGB(0,0,0));continue}
+    const pulse=1+Math.sin(time*1.5+flPulseOff[i])*0.12;
+    const sz=flSize[i]*pulse*a;
+    _m.compose(_p1.set(flPos[i3],flPos[i3+1],flPos[i3+2]),_q.identity(),_s2.set(sz,sz,sz));
+    flIM.setMatrixAt(i,_m);
+    flIM.setColorAt(i,_c.setRGB(flColor[i3]*a,flColor[i3+1]*a,flColor[i3+2]*a));
+  }
+  flIM.instanceMatrix.needsUpdate=true;
+  if(flIM.instanceColor)flIM.instanceColor.needsUpdate=true;
+}
+
+// ═══ GARBAGE COLLECTION ═══
+// When arrays fill up, compact by removing fully dead vine data
+function compactArrays(){
+  const aliveIds=new Set();
+  for(const v of vines)if(v.alive)aliveIds.add(v.id);
+
+  // Compact segments
+  let newSC=0;
+  const segRemap=new Map(); // old vine segStart -> new segStart
+  for(const v of vines){
+    if(!v.alive)continue;
+    const newStart=newSC;
+    for(let i=v.segStart;i<v.segStart+v.segLen&&i<segCount;i++){
+      if(!aliveIds.has(segVineId[i]))continue;
+      const j=newSC,i3=i*3,j3=j*3;
+      segFrom[j3]=segFrom[i3];segFrom[j3+1]=segFrom[i3+1];segFrom[j3+2]=segFrom[i3+2];
+      segTo[j3]=segTo[i3];segTo[j3+1]=segTo[i3+1];segTo[j3+2]=segTo[i3+2];
+      segColor[j3]=segColor[i3];segColor[j3+1]=segColor[i3+1];segColor[j3+2]=segColor[i3+2];
+      segAlpha[j]=segAlpha[i];segThick[j]=segThick[i];segVineId[j]=segVineId[i];
+      newSC++;
+    }
+    v.segStart=newStart;v.segLen=newSC-newStart;
+  }
+  segCount=newSC;
+
+  // Compact leaves
+  let newLC=0;
+  for(const v of vines){
+    if(!v.alive)continue;
+    const newStart=newLC;
+    for(let i=v.leafStart;i<v.leafStart+v.leafLen&&i<leafCount;i++){
+      if(!aliveIds.has(leafVineId[i]))continue;
+      const j=newLC,i3=i*3,j3=j*3,i2=i*2,j2=j*2;
+      leafPos[j3]=leafPos[i3];leafPos[j3+1]=leafPos[i3+1];leafPos[j3+2]=leafPos[i3+2];
+      leafColor[j3]=leafColor[i3];leafColor[j3+1]=leafColor[i3+1];leafColor[j3+2]=leafColor[i3+2];
+      leafScale[j2]=leafScale[i2];leafScale[j2+1]=leafScale[i2+1];
+      leafRot[j3]=leafRot[i3];leafRot[j3+1]=leafRot[i3+1];leafRot[j3+2]=leafRot[i3+2];
+      leafAlpha[j]=leafAlpha[i];leafVineId[j]=leafVineId[i];
+      leafSwayOff[j]=leafSwayOff[i];leafSwaySpd[j]=leafSwaySpd[i];
+      newLC++;
+    }
+    v.leafStart=newStart;v.leafLen=newLC-newStart;
+  }
+  leafCount=newLC;
+
+  // Compact flowers
+  let newFC=0;
+  for(const v of vines){
+    if(!v.alive)continue;
+    const newStart=newFC;
+    for(let i=v.flStart;i<v.flStart+v.flLen&&i<flowerCount;i++){
+      if(!aliveIds.has(flVineId[i]))continue;
+      const j=newFC,i3=i*3,j3=j*3;
+      flPos[j3]=flPos[i3];flPos[j3+1]=flPos[i3+1];flPos[j3+2]=flPos[i3+2];
+      flColor[j3]=flColor[i3];flColor[j3+1]=flColor[i3+1];flColor[j3+2]=flColor[i3+2];
+      flAlpha[j]=flAlpha[i];flSize[j]=flSize[i];flVineId[j]=flVineId[i];flPulseOff[j]=flPulseOff[i];
+      newFC++;
+    }
+    v.flStart=newStart;v.flLen=newFC-newStart;
+  }
+  flowerCount=newFC;
+
+  // Remove dead vines
+  for(let i=vines.length-1;i>=0;i--)if(!vines[i].alive)vines.splice(i,1);
+
+  // Rebuild grid
+  grid.clear();
+  for(let i=0;i<segCount;i++){
+    const i3=i*3;
+    gridInsert(segTo[i3],segTo[i3+1],segTo[i3+2],segVineId[i],i);
+  }
+}
+
+// ═══ INITIAL BURST ═══
+for(let i=0;i<120;i++) spawnVine();
+
+// ═══ MAIN LOOP ═══
+const clock=new THREE.Clock();
+let frame=0;
+setTimeout(()=>document.getElementById('ld').classList.add('go'),800);
+
+function animate(){
+  requestAnimationFrame(animate);
+  const time=clock.getElapsedTime();
+  frame++;
+
+  // Camera
+  camera.lookAt(
+    Math.sin(phi)*Math.cos(theta)*10,
+    Math.cos(phi)*10,
+    Math.sin(phi)*Math.sin(theta)*10
+  );
+
+  // Aurora
+  for(const am of auroraMats) am.uniforms.uTime.value=time;
+
+  // Grow vines (slow: fractional accumulation)
+  for(const v of vines){
+    if(!v.alive)continue;
+    v.age++;
+    if(!v.withering&&v.age>v.witherStartAge) v.withering=true;
+    if(v.withering){processWither(v);continue}
+    v.growAccum+=0.35;
+    while(v.growAccum>=1){v.growAccum--;growVine(v,time)}
+  }
+
+  // Spawn continuously
+  if(frame%8===0){
+    const aliveCount=vines.filter(v=>v.alive).length;
+    if(aliveCount<MAX_VINES&&segCount<MAX_SEGS*0.85){
+      spawnVine();
+      if(aliveCount<200) spawnVine();
+    }
+  }
+
+  // Compact GC periodically
+  if(frame%300===0&&segCount>MAX_SEGS*0.7){
+    compactArrays();
+  }
+
+  // Update flashes
+  for(let i=flashes.length-1;i>=0;i--){
+    const f=flashes[i];
+    f.age++;
+    const t2=f.age/f.maxAge;
+    const s=f.maxScale*Math.sin(t2*Math.PI);
+    f.mesh.scale.setScalar(s);
+    f.mesh.material.opacity=(1-t2)*0.8;
+    if(f.age>=f.maxAge){scene.remove(f.mesh);f.mesh.material.dispose();flashes.splice(i,1)}
+  }
+
+  updateInstances(time);
+  renderer.render(scene,camera);
+}
+animate();
+
+window.addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+})();
+</script>
 </body>
 </html>
