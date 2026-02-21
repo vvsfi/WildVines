@@ -153,8 +153,8 @@ function calcMarbleCount() {
   const ringArea = Math.PI * ringR * ringR;
   const avgR = (MIN_R + MAX_R) / 2;
   const avgBallArea = Math.PI * avgR * avgR;
-  const maxBalls = Math.floor((ringArea * MAX_FILL) / avgBallArea);
-  return Math.max(5, Math.min(maxBalls, 30));
+  const count = Math.floor((ringArea * MAX_FILL) / avgBallArea);
+  return Math.max(3, Math.min(count, 40));
 }
 
 function resize() {
@@ -469,6 +469,13 @@ function initMarbles() {
   marbles = [];
   const count = calcMarbleCount();
   for (let i = 0; i < count; i++) marbles.push(createMarble(i));
+  // Safety check: verify actual fill ratio <= 30%
+  const ringArea = Math.PI * ringR * ringR;
+  while (marbles.length > 3) {
+    const totalBallArea = marbles.reduce((sum, b) => sum + Math.PI * b.r * b.r, 0);
+    if (totalBallArea / ringArea <= MAX_FILL) break;
+    marbles.pop();
+  }
 }
 initMarbles();
 
