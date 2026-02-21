@@ -1,680 +1,794 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fi">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vild Wines in Space — @saarinenkoti.fi</title>
+<title>Saarinenkoti – Marble Ring</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400&display=swap');
-*{margin:0;padding:0;box-sizing:border-box}
-body{overflow:hidden;background:#030010;font-family:'DM Sans',sans-serif;color:#d8d4cc;cursor:grab}
-body.dragging{cursor:grabbing}
-canvas{display:block}
-.ov{position:fixed;z-index:10;pointer-events:none}
-.brand{top:32px;left:40px}
-.brand h1{font-family:'Cormorant Garamond',serif;font-weight:300;font-size:38px;letter-spacing:2px;color:rgba(220,215,205,0.8);text-shadow:0 0 50px rgba(80,40,160,0.25);line-height:1}
-.brand p{font-size:10px;letter-spacing:5px;text-transform:uppercase;color:rgba(150,130,190,0.4);margin-top:6px}
-.foot{bottom:28px;left:50%;transform:translateX(-50%)}
-.foot a{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;letter-spacing:2px;color:rgba(150,130,190,0.35);text-decoration:none;pointer-events:auto;transition:color .3s}
-.foot a:hover{color:rgba(190,170,230,0.7)}
-.vig{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:4;pointer-events:none;background:radial-gradient(ellipse at center,transparent 35%,rgba(3,0,16,0.8)100%)}
-.cn{position:fixed;z-index:10;pointer-events:none;width:20px;height:20px;border-color:rgba(120,100,180,0.12);border-style:solid;border-width:0}
-.cn.tl{top:20px;left:20px;border-top-width:1px;border-left-width:1px}
-.cn.tr{top:20px;right:20px;border-top-width:1px;border-right-width:1px}
-.cn.bl{bottom:20px;left:20px;border-bottom-width:1px;border-left-width:1px}
-.cn.br{bottom:20px;right:20px;border-bottom-width:1px;border-right-width:1px}
-.hint{position:fixed;z-index:12;bottom:70px;left:50%;transform:translateX(-50%);font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;letter-spacing:3px;color:rgba(150,130,190,0.5);pointer-events:none;opacity:0;animation:hintIn 0.8s 2.5s ease forwards,hintOut 1.5s 8s ease forwards}
-@keyframes hintIn{to{opacity:1}}
-@keyframes hintOut{to{opacity:0}}
-.ld{position:fixed;inset:0;background:#030010;z-index:100;display:flex;align-items:center;justify-content:center;transition:opacity 1.8s}
-.ld.go{opacity:0;pointer-events:none}
-.ld span{font-family:'Cormorant Garamond',serif;font-weight:300;font-size:24px;color:rgba(150,130,190,0.5);animation:pu 1.3s ease-in-out infinite}
-@keyframes pu{0%,100%{opacity:.3}50%{opacity:1}}
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #111; }
+  canvas { display: block; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  #info {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    font-family: 'Georgia', serif; font-size: 16px; color: rgba(255,255,255,0.95);
+    text-shadow: 0 1px 4px rgba(0,0,0,0.7); pointer-events: none;
+    letter-spacing: 1.2px;
+    background: rgba(0,0,0,0.55);
+    padding: 10px 28px;
+    border-radius: 24px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.25);
+    animation: infoHighlight 10s ease-out forwards;
+    white-space: nowrap;
+  }
+  @keyframes infoHighlight {
+    0%   { color: rgba(255,255,255,1); background: rgba(0,0,0,0.6); border-color: rgba(255,255,255,0.4); transform: translateX(-50%) scale(1.05); }
+    15%  { color: rgba(255,255,255,1); background: rgba(0,0,0,0.55); border-color: rgba(255,255,255,0.35); transform: translateX(-50%) scale(1.02); }
+    70%  { color: rgba(255,255,255,0.9); background: rgba(0,0,0,0.4); border-color: rgba(255,255,255,0.2); transform: translateX(-50%) scale(1); }
+    100% { color: rgba(255,255,255,0.35); background: rgba(0,0,0,0); border-color: rgba(255,255,255,0); transform: translateX(-50%) scale(1); padding: 10px 28px; backdrop-filter: blur(0px); }
+  }
+  #graffiti {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    pointer-events: none; z-index: 10;
+  }
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Nabla&family=Rubik+Spray+Paint&family=Emblema+One&display=swap" rel="stylesheet">
 </head>
 <body>
-<div class="ld" id="ld"><span>Vild Wines in Space</span></div>
-<div class="vig"></div>
-<div class="cn tl"></div><div class="cn tr"></div><div class="cn bl"></div><div class="cn br"></div>
-<div class="ov brand"><h1>Vild Wines in Space</h1><p>@ saarinenkoti.fi</p></div>
-<div class="hint">click &amp; drag to look around</div>
-<div class="ov foot"><a href="https://saarinenkoti.fi">@saarinenkoti.fi</a></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<canvas id="c"></canvas>
+<canvas id="graffiti"></canvas>
+<div id="info">click &amp; drag a marble to shoot it</div>
 <script>
-(function(){
-"use strict";
 
-// ═══ RNG ═══
-let _s=Date.now()^(Math.random()*0xFFFFFF|0);
-function rand(){_s^=_s<<13;_s^=_s>>17;_s^=_s<<5;return((_s<0?~_s+1:_s)%10000)/10000}
-function rr(a,b){return a+rand()*(b-a)}
-function ri(a,b){return Math.floor(rr(a,b+1))}
+// ─── 3D Graffiti Title Renderer ───
+let bgPalette = []; // shared with background generator
 
-// ═══ RENDERER ═══
-const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:"high-performance"});
-renderer.setSize(innerWidth,innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.1;
-renderer.outputEncoding=THREE.sRGBEncoding;
-document.body.appendChild(renderer.domElement);
+function drawGraffitiTitle() {
+  const gc = document.getElementById('graffiti');
+  const g = gc.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
 
-const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x030010);
-scene.fog=new THREE.FogExp2(0x030010,0.006);
+  const gW = Math.min(window.innerWidth * 0.94, 880);
+  const gH = 140;
+  gc.width = gW * dpr;
+  gc.height = gH * dpr;
+  gc.style.width = gW + 'px';
+  gc.style.height = gH + 'px';
+  g.scale(dpr, dpr);
 
-const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,500);
-camera.position.set(0,0,0.001);
+  const text = 'Saarinenkoti';
+  const fontSize = Math.min(gW * 0.125, 88);
 
-// ═══ ORBIT ═══
-let drag=false,px=0,py=0,theta=Math.random()*6.28,phi=Math.PI*0.5;
-function oD(x,y){drag=true;px=x;py=y;document.body.classList.add('dragging')}
-function oU(){drag=false;document.body.classList.remove('dragging')}
-function oM(x,y){if(!drag)return;theta-=(x-px)*0.003;phi=Math.max(0.15,Math.min(Math.PI-0.15,phi-(y-py)*0.003));px=x;py=y}
-renderer.domElement.addEventListener('mousedown',e=>oD(e.clientX,e.clientY));
-window.addEventListener('mouseup',oU);
-window.addEventListener('mousemove',e=>oM(e.clientX,e.clientY));
-renderer.domElement.addEventListener('touchstart',e=>{e.preventDefault();oD(e.touches[0].clientX,e.touches[0].clientY)},{passive:false});
-window.addEventListener('touchend',oU);
-window.addEventListener('touchmove',e=>oM(e.touches[0].clientX,e.touches[0].clientY));
+  const fonts = ['Rubik Spray Paint', 'Bungee Shade', 'Emblema One'];
+  const fontChoice = fonts[Math.floor(Math.random() * fonts.length)];
+  const fontStr = `bold ${fontSize}px "${fontChoice}", cursive`;
+  g.font = fontStr;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
 
-// ═══ LIGHTS ═══
-scene.add(new THREE.AmbientLight(0x1a1030,1.2));
-const dl=new THREE.DirectionalLight(0xeeddcc,0.4);dl.position.set(20,30,-15);scene.add(dl);
-const pl1=new THREE.PointLight(0x5030a0,0.3,150);pl1.position.set(-25,-10,30);scene.add(pl1);
-const pl2=new THREE.PointLight(0xa06030,0.2,120);pl2.position.set(20,20,-25);scene.add(pl2);
+  const cx = gW / 2;
+  const cy = gH / 2;
 
-// ═══ STARS ═══
-{const n=5000,p=new Float32Array(n*3);
-for(let i=0;i<n;i++){const t=rand()*6.28,h=Math.acos(2*rand()-1),r=100+rand()*140;
-p[i*3]=r*Math.sin(h)*Math.cos(t);p[i*3+1]=r*Math.sin(h)*Math.sin(t);p[i*3+2]=r*Math.cos(h)}
-const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(p,3));
-scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xffffff,size:0.18,transparent:true,opacity:0.5,sizeAttenuation:true})))}
+  // Use background palette colors
+  const p0 = bgPalette[0] || { h: 20, s: 90, lMin: 45, lMax: 80 };
+  const p1 = bgPalette[1] || { h: 40, s: 85, lMin: 50, lMax: 85 };
+  const pLast = bgPalette[bgPalette.length - 1] || { h: 30, s: 30, lMin: 85, lMax: 96 };
 
-// ═══ AURORA BOREALIS ═══
-const auroraVS=`
-varying vec2 vUv;
-void main(){vUv=uv;gl_Position=projectionMatrix*viewMatrix*modelMatrix*vec4(position,1.0);}`;
-const auroraFS=`
-uniform float uTime;
-uniform vec3 uColor1,uColor2,uColor3;
-uniform float uSpeed,uIntensity;
-varying vec2 vUv;
-vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
-vec2 mod289(vec2 x){return x-floor(x*(1.0/289.0))*289.0;}
-vec3 permute(vec3 x){return mod289(((x*34.0)+1.0)*x);}
-float snoise(vec2 v){
-  const vec4 C=vec4(0.211324865405187,0.366025403784439,-0.577350269189626,0.024390243902439);
-  vec2 i=floor(v+dot(v,C.yy));vec2 x0=v-i+dot(i,C.xx);
-  vec2 i1=(x0.x>x0.y)?vec2(1,0):vec2(0,1);
-  vec4 x12=x0.xyxy+C.xxzz;x12.xy-=i1;i=mod289(i);
-  vec3 p=permute(permute(i.y+vec3(0,i1.y,1))+i.x+vec3(0,i1.x,1));
-  vec3 m=max(0.5-vec3(dot(x0,x0),dot(x12.xy,x12.xy),dot(x12.zw,x12.zw)),0.0);
-  m=m*m;m=m*m;
-  vec3 x=2.0*fract(p*C.www)-1.0;vec3 h=abs(x)-0.5;vec3 ox=floor(x+0.5);vec3 a0=x-ox;
-  m*=1.79284291400159-0.85373472095314*(a0*a0+h*h);
-  vec3 g;g.x=a0.x*x0.x+h.x*x0.y;g.yz=a0.yz*x12.xz+h.yz*x12.yw;
-  return 130.0*dot(m,g);}
-void main(){
-  vec2 uv=vUv;float t=uTime*uSpeed;
-  float w1=snoise(vec2(uv.x*3.0+t*0.3,uv.y*1.5+t*0.1))*0.5+0.5;
-  float w2=snoise(vec2(uv.x*5.0-t*0.2,uv.y*2.0+t*0.15))*0.5+0.5;
-  float w3=snoise(vec2(uv.x*8.0+t*0.15,uv.y*3.0-t*0.08))*0.5+0.5;
-  float curtain=pow(w1*w2,1.5)*1.8+pow(w3,2.0)*0.6;
-  float yF=smoothstep(0.0,0.25,uv.y)*smoothstep(1.0,0.6,uv.y);
-  float xF=smoothstep(0.0,0.15,uv.x)*smoothstep(1.0,0.85,uv.x);
-  curtain*=yF*xF;
-  float cm1=snoise(vec2(uv.x*2.0+t*0.2,uv.y*0.8))*0.5+0.5;
-  float cm2=snoise(vec2(uv.x*1.5-t*0.15,uv.y*1.2+t*0.1))*0.5+0.5;
-  vec3 col=mix(uColor1,uColor2,cm1);col=mix(col,uColor3,cm2*0.5);
-  col+=vec3(0.2,0.25,0.15)*pow(curtain,2.5);
-  float alpha=curtain*uIntensity;
-  gl_FragColor=vec4(col*alpha*3.5,alpha*1.4);}`;
+  const darkH = p0.h, darkS = p0.s;
+  const midH = p1.h, midS = p1.s;
 
-const auroraMats=[];
-const auroraC=[
-  {c1:[0.1,1,0.4],c2:[0,0.5,1],c3:[0.6,0.1,1],i:0.45,sp:0.4,d:95,y:30,r:0,w:180,h:70},
-  {c1:[0,0.8,0.9],c2:[0.4,0,1],c3:[0,1,0.6],i:0.38,sp:0.35,d:100,y:-20,r:Math.PI*0.7,w:160,h:60},
-  {c1:[1,0.2,0.5],c2:[0.5,0,1],c3:[0.1,0.4,1],i:0.35,sp:0.45,d:90,y:10,r:Math.PI*1.3,w:150,h:55},
-  {c1:[0.2,0.9,1],c2:[0,1,0.5],c3:[0.8,0.3,1],i:0.3,sp:0.3,d:105,y:-35,r:Math.PI*0.3,w:140,h:50},
-  {c1:[0.6,1,0.2],c2:[0,0.7,1],c3:[1,0.1,0.8],i:0.4,sp:0.38,d:98,y:45,r:Math.PI*1.7,w:170,h:65},
-];
-for(const a of auroraC){
-  const mat=new THREE.ShaderMaterial({vertexShader:auroraVS,fragmentShader:auroraFS,
-    uniforms:{uTime:{value:0},uColor1:{value:new THREE.Vector3(...a.c1)},uColor2:{value:new THREE.Vector3(...a.c2)},
-    uColor3:{value:new THREE.Vector3(...a.c3)},uSpeed:{value:a.sp},uIntensity:{value:a.i}},
-    transparent:true,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending});
-  const m=new THREE.Mesh(new THREE.PlaneGeometry(a.w,a.h),mat);
-  m.position.set(Math.cos(a.r)*a.d,a.y,Math.sin(a.r)*a.d);
-  m.lookAt(0,a.y*0.3,0);scene.add(m);auroraMats.push(mat);
+  // === 3D extrusion (stacked offset layers) ===
+  const depth = Math.round(fontSize * 0.12);
+  // Extrusion direction: down-right
+  for (let d = depth; d >= 1; d--) {
+    const t = d / depth; // 1 at back, 0 at front
+    const lum = 18 + t * 15; // dark at back, slightly lighter near front
+    g.fillStyle = `hsl(${darkH}, ${darkS * 0.7}%, ${lum}%)`;
+    g.font = fontStr;
+    g.fillText(text, cx + d * 1.1, cy + d * 1.1);
+  }
+
+  // === Main face with gradient from palette ===
+  const faceGrad = g.createLinearGradient(cx - gW * 0.3, cy - fontSize * 0.5, cx + gW * 0.15, cy + fontSize * 0.5);
+  faceGrad.addColorStop(0, `hsl(${p0.h}, ${p0.s}%, ${p0.lMax}%)`);
+  faceGrad.addColorStop(0.45, `hsl(${p1.h}, ${p1.s}%, ${(p1.lMin + p1.lMax) / 2}%)`);
+  faceGrad.addColorStop(1, `hsl(${p0.h}, ${p0.s}%, ${p0.lMin + 5}%)`);
+  g.fillStyle = faceGrad;
+  g.fillText(text, cx, cy);
+
+  // === Outline around face ===
+  g.strokeStyle = `hsl(${darkH}, ${darkS * 0.8}%, 15%)`;
+  g.lineWidth = fontSize * 0.04;
+  g.lineJoin = 'round';
+  g.miterLimit = 2;
+  g.strokeText(text, cx, cy);
+
+  // === Top highlight (clipped to upper half) ===
+  g.save();
+  g.beginPath();
+  g.rect(0, 0, gW, cy - fontSize * 0.02);
+  g.clip();
+  g.globalAlpha = 0.3;
+  g.fillStyle = `hsl(${pLast.h}, ${pLast.s}%, ${pLast.lMax}%)`;
+  g.font = fontStr;
+  g.fillText(text, cx, cy);
+  g.restore();
+
+  // === Subtle specular dot highlights ===
+  g.save();
+  g.globalAlpha = 0.15;
+  g.fillStyle = '#fff';
+  g.font = fontStr;
+  g.fillText(text, cx - 1, cy - 1.5);
+  g.restore();
 }
 
-// ═══════════════════════════════════════════════════════════
-//  INSTANCED VINE SYSTEM — maximum performance
-//  All vine segments, leaves, flowers are instanced meshes.
-//  Vine data is stored in flat arrays.
-// ═══════════════════════════════════════════════════════════
+// ─── Setup ───
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, ringCx, ringCy, ringR;
+const BALL_COUNT = 20;
+const FRICTION = 0.997;
+const RESTITUTION = 0.85;
+const MIN_R = 18, MAX_R = 28;
 
-const MAX_SEGS=120000;
-const MAX_LEAVES=30000;
-const MAX_FLOWERS=10000;
-const MAX_VINES=1200;
-const SPAWN_RADIUS=45;
-const UP=new THREE.Vector3(0,1,0);
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  ringCx = W / 2;
+  ringCy = H / 2;
+  ringR = Math.min(W, H) * 0.38;
+  positionUI();
+}
 
-// Instanced segment cylinders
-const segGeo=new THREE.CylinderGeometry(1,1,1,4,1);
-segGeo.translate(0,0.5,0);
-const segMat=new THREE.MeshStandardMaterial({roughness:0.7,metalness:0.05});
-const segIM=new THREE.InstancedMesh(segGeo,segMat,MAX_SEGS);
-segIM.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-segIM.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(MAX_SEGS*3),3);
-segIM.count=0;scene.add(segIM);
+function positionUI() {
+  const ringOuterTop = ringCy - ringR - 26; // top of ring border
+  const ringOuterBot = ringCy + ringR + 26; // bottom of ring border
+  const gEl = document.getElementById('graffiti');
+  const iEl = document.getElementById('info');
 
-// Instanced leaves
-const leafGeo=new THREE.PlaneGeometry(1,1);
-const leafMat=new THREE.MeshStandardMaterial({roughness:0.55,metalness:0,side:THREE.DoubleSide});
-const leafIM=new THREE.InstancedMesh(leafGeo,leafMat,MAX_LEAVES);
-leafIM.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-leafIM.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(MAX_LEAVES*3),3);
-leafIM.count=0;scene.add(leafIM);
+  // Title goes centered in the gap above the ring
+  const titleH = 140;
+  const topGap = ringOuterTop;
+  const titleTop = Math.max(4, (topGap - titleH) / 2);
+  gEl.style.top = titleTop + 'px';
 
-// Instanced flowers (small spheres with emissive)
-const flGeo=new THREE.SphereGeometry(1,5,5);
-const flMat=new THREE.MeshStandardMaterial({roughness:0.35,metalness:0.1,emissive:new THREE.Color(0x222222),emissiveIntensity:0.4});
-const flIM=new THREE.InstancedMesh(flGeo,flMat,MAX_FLOWERS);
-flIM.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-flIM.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(MAX_FLOWERS*3),3);
-flIM.count=0;scene.add(flIM);
+  // Instructions go centered in the gap below the ring
+  const botGap = H - ringOuterBot;
+  const infoH = iEl.offsetHeight || 40;
+  const infoTop = ringOuterBot + Math.max(4, (botGap - infoH) / 2);
+  iEl.style.top = infoTop + 'px';
+}
+window.addEventListener('resize', () => { resize(); generateBackground(); generateRingPattern(); drawGraffitiTitle(); positionUI(); });
+resize();
 
-// Flash particles (spawn points)
-const flashGeo=new THREE.SphereGeometry(1,6,6);
-const flashMat=new THREE.MeshBasicMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending});
-const flashes=[];
+// ─── Random helpers ───
+const rand = (a, b) => a + Math.random() * (b - a);
+const randInt = (a, b) => Math.floor(rand(a, b + 1));
+const pick = arr => arr[randInt(0, arr.length - 1)];
 
-// ═══ DATA ARRAYS ═══
-// Segments: flat typed arrays
-let segCount=0;
-const segFrom=new Float32Array(MAX_SEGS*3);
-const segTo=new Float32Array(MAX_SEGS*3);
-const segColor=new Float32Array(MAX_SEGS*3);
-const segAlpha=new Float32Array(MAX_SEGS);
-const segThick=new Float32Array(MAX_SEGS);
-const segVineId=new Int32Array(MAX_SEGS);
+function hsl(h, s, l) { return `hsl(${h},${s}%,${l}%)`; }
+function hsla(h, s, l, a) { return `hsla(${h},${s}%,${l}%,${a})`; }
 
-// Leaves
-let leafCount=0;
-const leafPos=new Float32Array(MAX_LEAVES*3);
-const leafColor=new Float32Array(MAX_LEAVES*3);
-const leafAlpha=new Float32Array(MAX_LEAVES);
-const leafScale=new Float32Array(MAX_LEAVES*2); // w,h
-const leafRot=new Float32Array(MAX_LEAVES*3);
-const leafVineId=new Int32Array(MAX_LEAVES);
-const leafSwayOff=new Float32Array(MAX_LEAVES);
-const leafSwaySpd=new Float32Array(MAX_LEAVES);
+// ─── Organic swirling candy background ───
+let bgCanvas, bgCtx;
 
-// Flowers
-let flowerCount=0;
-const flPos=new Float32Array(MAX_FLOWERS*3);
-const flColor=new Float32Array(MAX_FLOWERS*3);
-const flAlpha=new Float32Array(MAX_FLOWERS);
-const flSize=new Float32Array(MAX_FLOWERS);
-const flVineId=new Int32Array(MAX_FLOWERS);
-const flPulseOff=new Float32Array(MAX_FLOWERS);
+// Smooth noise for organic flow
+function fbm(x, y, octaves) {
+  let val = 0, amp = 1, freq = 1, max = 0;
+  for (let i = 0; i < octaves; i++) {
+    val += amp * (Math.sin(x * freq * 1.7 + Math.cos(y * freq * 0.9 + i * 5.1)) *
+                  Math.cos(y * freq * 1.3 + Math.sin(x * freq * 1.1 + i * 3.7)));
+    max += amp;
+    amp *= 0.5;
+    freq *= 2.1;
+  }
+  return val / max;
+}
 
-// ═══ VINE OBJECT ═══
-const vines=[];
-let vineUID=0;
+function generateBackground() {
+  bgCanvas = document.createElement('canvas');
+  bgCanvas.width = W; bgCanvas.height = H;
+  bgCtx = bgCanvas.getContext('2d');
 
-function randomColor(){
-  const h=rand();
-  return{
-    vine:new THREE.Color().setHSL(h,0.4+rand()*0.3,0.15+rand()*0.15),
-    leaf1:new THREE.Color().setHSL((h+0.15+rand()*0.15)%1,0.4+rand()*0.25,0.2+rand()*0.15),
-    leaf2:new THREE.Color().setHSL((h+0.3+rand()*0.1)%1,0.35+rand()*0.2,0.18+rand()*0.12),
-    fl1:new THREE.Color().setHSL((h+0.45+rand()*0.2)%1,0.6+rand()*0.3,0.4+rand()*0.25),
-    fl2:new THREE.Color().setHSL((h+0.6+rand()*0.15)%1,0.55+rand()*0.3,0.35+rand()*0.2),
-    flash:new THREE.Color().setHSL(h,0.8,0.7),
+  // Vibrant candy palette
+  const paletteSize = randInt(3, 6);
+  const baseHue = rand(0, 360);
+  const palette = [];
+  const spread = rand(50, 140);
+  for (let i = 0; i < paletteSize; i++) {
+    palette.push({
+      h: (baseHue + (spread / paletteSize) * i + rand(-12, 12) + 360) % 360,
+      s: rand(70, 100),
+      lMin: rand(38, 52),
+      lMax: rand(68, 88)
+    });
+  }
+  // Cream/white accent
+  palette.push({ h: (baseHue + rand(-20, 20) + 360) % 360, s: rand(20, 45), lMin: 82, lMax: 96 });
+
+  // Share palette for title
+  bgPalette = palette;
+
+  // Strong swirl centers for tight curling
+  const swirlCount = randInt(6, 14);
+  const swirls = [];
+  for (let i = 0; i < swirlCount; i++) {
+    swirls.push({
+      cx: rand(-0.1, 1.1) * W,
+      cy: rand(-0.1, 1.1) * H,
+      strength: rand(2.5, 7) * pick([1, -1]),
+      radius: rand(0.15, 0.55) * Math.min(W, H)
+    });
+  }
+
+  function flowAngle(px, py) {
+    let angle = fbm(px * 0.002, py * 0.002, 4) * Math.PI * 3;
+    for (const s of swirls) {
+      const dx = px - s.cx, dy = py - s.cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const influence = Math.exp(-dist * dist / (s.radius * s.radius));
+      angle += Math.atan2(dy, dx) * s.strength * influence;
+    }
+    return angle;
+  }
+
+  const diag = Math.sqrt(W * W + H * H);
+
+  // --- LAYER 1: Fat background ribbons that fill the space ---
+  const fatCount = randInt(30, 50);
+  const fatWidth = diag * rand(0.025, 0.045);
+  const STEPS = 400;
+  const stepLen = diag * 0.008;
+
+  // Base fill with darkened palette color
+  const basePal = palette[0];
+  bgCtx.fillStyle = hsl(basePal.h, basePal.s * 0.6, basePal.lMin * 0.55);
+  bgCtx.fillRect(0, 0, W, H);
+
+  function tracePath(sx, sy, steps, sLen) {
+    const fwd = [{ x: sx, y: sy }];
+    let cx = sx, cy = sy;
+    for (let s = 0; s < steps; s++) {
+      const a = flowAngle(cx, cy);
+      cx += Math.cos(a) * sLen;
+      cy += Math.sin(a) * sLen;
+      fwd.push({ x: cx, y: cy });
+    }
+    cx = sx; cy = sy;
+    const bwd = [];
+    for (let s = 0; s < steps; s++) {
+      const a = flowAngle(cx, cy);
+      cx -= Math.cos(a) * sLen;
+      cy -= Math.sin(a) * sLen;
+      bwd.push({ x: cx, y: cy });
+    }
+    bwd.reverse();
+    return [...bwd, ...fwd];
+  }
+
+  function strokePath(path) {
+    bgCtx.beginPath();
+    bgCtx.moveTo(path[0].x, path[0].y);
+    for (let i = 1; i < path.length; i++) bgCtx.lineTo(path[i].x, path[i].y);
+  }
+
+  function drawRibbon(path, w, pal, litBase) {
+    // Dark outline for depth separation
+    strokePath(path);
+    bgCtx.lineWidth = w * 1.15;
+    bgCtx.lineCap = 'round';
+    bgCtx.lineJoin = 'round';
+    bgCtx.strokeStyle = hsl(pal.h, pal.s * 0.9, Math.max(litBase - 22, 15));
+    bgCtx.stroke();
+
+    // Main body
+    strokePath(path);
+    bgCtx.lineWidth = w;
+    bgCtx.strokeStyle = hsl(pal.h, pal.s, litBase);
+    bgCtx.stroke();
+
+    // Bright inner band
+    strokePath(path);
+    bgCtx.lineWidth = w * 0.55;
+    bgCtx.strokeStyle = hsl(pal.h, pal.s * 0.85, Math.min(litBase + 16, 92));
+    bgCtx.stroke();
+
+    // Hot specular highlight
+    strokePath(path);
+    bgCtx.lineWidth = w * 0.18;
+    bgCtx.strokeStyle = hsla(pal.h, pal.s * 0.4, Math.min(litBase + 35, 97), 0.8);
+    bgCtx.stroke();
+  }
+
+  // Fat background fill ribbons — densely seeded
+  for (let i = 0; i < fatCount; i++) {
+    const sx = rand(-W * 0.2, W * 1.2);
+    const sy = rand(-H * 0.2, H * 1.2);
+    const pal = palette[randInt(0, palette.length - 1)];
+    const litBase = rand(pal.lMin, pal.lMax);
+    const w = rand(fatWidth * 0.7, fatWidth * 1.4);
+    const path = tracePath(sx, sy, STEPS, stepLen);
+    drawRibbon(path, w, pal, litBase);
+  }
+
+  // --- LAYER 2: Medium ribbons for detail ---
+  const medCount = randInt(35, 60);
+  const medWidth = diag * rand(0.013, 0.025);
+  for (let i = 0; i < medCount; i++) {
+    const sx = rand(-W * 0.15, W * 1.15);
+    const sy = rand(-H * 0.15, H * 1.15);
+    const pal = palette[randInt(0, palette.length - 1)];
+    const litBase = rand(pal.lMin, pal.lMax);
+    const w = rand(medWidth * 0.6, medWidth * 1.5);
+    const path = tracePath(sx, sy, STEPS, stepLen * 0.9);
+    drawRibbon(path, w, pal, litBase);
+  }
+
+  // --- LAYER 3: Tight spirals / loops on top ---
+  const loopCount = randInt(10, 22);
+  for (let l = 0; l < loopCount; l++) {
+    const lcx = rand(-W * 0.05, W * 1.05);
+    const lcy = rand(-H * 0.05, H * 1.05);
+    const loopR = rand(25, Math.min(W, H) * 0.22);
+    const turns = rand(2, 5.5);
+    const pal = palette[randInt(0, palette.length - 1)];
+    const lw = rand(diag * 0.008, diag * 0.028);
+    const lit = rand(pal.lMin, pal.lMax);
+    const startAngle = rand(0, Math.PI * 2);
+
+    // Build spiral path
+    const spiralPath = [];
+    for (let t = 0; t <= turns * Math.PI * 2; t += 0.06) {
+      const shrink = 1 - (t / (turns * Math.PI * 2)) * 0.65;
+      const r = loopR * shrink;
+      spiralPath.push({
+        x: lcx + Math.cos(t + startAngle) * r,
+        y: lcy + Math.sin(t + startAngle) * r
+      });
+    }
+    drawRibbon(spiralPath, lw, pal, lit);
+  }
+
+  // --- LAYER 4: Thin accent curls ---
+  const thinCount = randInt(15, 30);
+  for (let i = 0; i < thinCount; i++) {
+    const sx = rand(-W * 0.1, W * 1.1);
+    const sy = rand(-H * 0.1, H * 1.1);
+    const pal = palette[randInt(0, palette.length - 1)];
+    const litBase = rand(pal.lMin, pal.lMax);
+    const w = rand(diag * 0.004, diag * 0.012);
+    const path = tracePath(sx, sy, 250, stepLen * 0.7);
+    drawRibbon(path, w, pal, litBase);
+  }
+
+  // Soft glow overlay
+  const glowGrad = bgCtx.createRadialGradient(W * 0.4, H * 0.35, 0, W * 0.5, H * 0.5, diag * 0.55);
+  glowGrad.addColorStop(0, 'rgba(255,255,255,0.05)');
+  glowGrad.addColorStop(1, 'rgba(0,0,0,0.1)');
+  bgCtx.fillStyle = glowGrad;
+  bgCtx.fillRect(0, 0, W, H);
+}
+
+// ─── Ring pattern (offscreen) ───
+let ringCanvas, ringCtx;
+function generateRingPattern() {
+  const size = Math.ceil(ringR * 2 + 80);
+  ringCanvas = document.createElement('canvas');
+  ringCanvas.width = size; ringCanvas.height = size;
+  ringCtx = ringCanvas.getContext('2d');
+  const cx = size / 2, cy = size / 2;
+
+  // cloud-like colorful ring pattern
+  const ringHue1 = rand(0, 360);
+  const ringHue2 = (ringHue1 + rand(60, 180)) % 360;
+  const ringHue3 = (ringHue1 + rand(120, 240)) % 360;
+
+  // draw multiple overlapping radial gradients for cloud effect
+  for (let i = 0; i < 18; i++) {
+    const a = rand(0, Math.PI * 2);
+    const d = rand(ringR * 0.6, ringR * 1.05);
+    const px = cx + Math.cos(a) * d * rand(0.3, 0.7);
+    const py = cy + Math.sin(a) * d * rand(0.3, 0.7);
+    const blobR = rand(ringR * 0.3, ringR * 0.7);
+    const hue = pick([ringHue1, ringHue2, ringHue3]) + rand(-20, 20);
+    const grad = ringCtx.createRadialGradient(px, py, 0, px, py, blobR);
+    grad.addColorStop(0, hsla(hue, rand(70, 100), rand(55, 80), rand(0.3, 0.6)));
+    grad.addColorStop(1, hsla(hue, 80, 60, 0));
+    ringCtx.fillStyle = grad;
+    ringCtx.fillRect(0, 0, size, size);
+  }
+}
+
+generateBackground();
+generateRingPattern();
+
+// Draw graffiti after fonts are ready
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => { drawGraffitiTitle(); positionUI(); });
+} else {
+  setTimeout(() => { drawGraffitiTitle(); positionUI(); }, 500);
+}
+
+// ─── Marble generation ───
+function createMarble(index) {
+  const r = rand(MIN_R, MAX_R);
+  // place randomly inside ring
+  const angle = rand(0, Math.PI * 2);
+  const dist = rand(0, ringR - r - 5);
+  const x = ringCx + Math.cos(angle) * dist;
+  const y = ringCy + Math.sin(angle) * dist;
+
+  const baseHue = rand(0, 360);
+  const sat = rand(40, 100);
+  const lit = rand(40, 75);
+  // decoration type
+  const deco = randInt(0, 5); // 0=swirl, 1=cat-eye, 2=speckles, 3=bands, 4=star, 5=plain
+
+  return {
+    x, y, vx: 0, vy: 0, r,
+    baseHue, sat, lit, deco,
+    swirlAngle: rand(0, Math.PI * 2),
+    swirlCount: randInt(2, 5),
+    speckles: Array.from({ length: randInt(6, 18) }, () => ({
+      a: rand(0, Math.PI * 2), d: rand(0.1, 0.7),
+      s: rand(0.04, 0.15), h: rand(0, 360)
+    })),
+    bands: randInt(2, 5),
+    bandAngle: rand(0, Math.PI),
   };
 }
 
-class VineData{
-  constructor(origin,dir){
-    this.id=vineUID++;
-    this.alive=true;
-    this.origin=origin.clone();
-    this.tipPos=origin.clone();
-    this.tipDir=dir.clone().normalize();
-    this.totalLen=0;
-    this.maxLen=20+rand()*40;
-    this.stepSize=0.04+rand()*0.04;
-    this.thickness=0.015+rand()*0.03;
-    this.curlFreq=1.5+rand()*3;
-    this.curlAmp=0.06+rand()*0.2;
-    this.pal=randomColor();
-    this.leafInterval=ri(4,10);
-    this.flowerInterval=ri(15,35);
-    this.stepCount=0;
-    this.segStart=segCount; // where my segs start in the global array
-    this.segLen=0;
-    this.leafStart=leafCount;
-    this.leafLen=0;
-    this.flStart=flowerCount;
-    this.flLen=0;
-    this.age=0;
-    this.withering=false;
-    this.witherAge=0;
-    this.witherDuration=180+ri(0,250);
-    this.witherStartAge=400+ri(0,2500);
-    this.witherAlpha=1;
-    this.growAccum=0;
-    this.branchDepth=0;
-  }
-}
+let marbles = [];
+for (let i = 0; i < BALL_COUNT; i++) marbles.push(createMarble(i));
 
-// ═══ SPATIAL GRID for collision detection ═══
-const GRID_CELL=1.5;
-const grid=new Map();
+// ─── Interaction ───
+let dragging = null;
+let dragStart = null;
+let dragCurrent = null;
 
-function gridKey(x,y,z){
-  return((x/GRID_CELL|0)+500)*1000000+((y/GRID_CELL|0)+500)*1000+((z/GRID_CELL|0)+500);
-}
-
-function gridInsert(x,y,z,vineId,segIdx){
-  const k=gridKey(x,y,z);
-  let cell=grid.get(k);
-  if(!cell){cell=[];grid.set(k,cell)}
-  cell.push(vineId|(segIdx<<16));
-}
-
-function gridQuery(x,y,z,skipVineId){
-  // Check 3x3x3 neighborhood
-  const cx=x/GRID_CELL|0,cy=y/GRID_CELL|0,cz=z/GRID_CELL|0;
-  for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)for(let dz=-1;dz<=1;dz++){
-    const k=((cx+dx+500)*1000000)+((cy+dy+500)*1000)+((cz+dz+500));
-    const cell=grid.get(k);
-    if(!cell)continue;
-    for(const packed of cell){
-      const vid=packed&0xFFFF;
-      if(vid!==skipVineId) return vid;
+canvas.addEventListener('pointerdown', e => {
+  const mx = e.clientX, my = e.clientY;
+  for (let i = marbles.length - 1; i >= 0; i--) {
+    const b = marbles[i];
+    const dx = mx - b.x, dy = my - b.y;
+    if (dx * dx + dy * dy < b.r * b.r) {
+      dragging = b;
+      dragStart = { x: mx, y: my };
+      dragCurrent = { x: mx, y: my };
+      b.vx = 0; b.vy = 0;
+      break;
     }
   }
-  return-1;
-}
-
-// ═══ GROW ═══
-function growVine(vine,time){
-  if(!vine.alive||vine.totalLen>=vine.maxLen||vine.withering)return;
-  if(segCount>=MAX_SEGS-1)return;
-
-  const tp=vine.tipPos;
-  const td=vine.tipDir;
-
-  // Curl
-  const curl=new THREE.Vector3(
-    Math.sin(tp.y*vine.curlFreq+time*0.4+vine.id*0.7)*vine.curlAmp,
-    Math.cos(tp.x*vine.curlFreq*0.8+time*0.3+vine.id*0.3)*vine.curlAmp*0.7,
-    Math.sin(tp.z*vine.curlFreq*0.9+time*0.35+vine.id*0.5)*vine.curlAmp
-  );
-  const wobble=new THREE.Vector3((rand()-.5)*0.03,(rand()-.5)*0.03,(rand()-.5)*0.03);
-  const nd=td.clone().multiplyScalar(0.85).add(curl).add(wobble).normalize();
-  const np=tp.clone().add(nd.clone().multiplyScalar(vine.stepSize));
-
-  // Collision check
-  const hitVine=gridQuery(np.x,np.y,np.z,vine.id);
-  if(hitVine>=0){
-    // Collision — stop this vine from growing, mark it ready to wither soon
-    vine.maxLen=vine.totalLen; // stop growing
-    vine.witherStartAge=Math.min(vine.witherStartAge, vine.age+ri(30,120)); // wither soon
-    return;
-  }
-
-  // Add segment
-  const si=segCount;
-  const i3=si*3;
-  segFrom[i3]=tp.x;segFrom[i3+1]=tp.y;segFrom[i3+2]=tp.z;
-  segTo[i3]=np.x;segTo[i3+1]=np.y;segTo[i3+2]=np.z;
-  const vc=vine.pal.vine;
-  segColor[i3]=vc.r;segColor[i3+1]=vc.g;segColor[i3+2]=vc.b;
-  // Taper
-  const t=vine.totalLen/vine.maxLen;
-  segThick[si]=vine.thickness*Math.pow(1-t,0.4)*(1+Math.sin(t*20+vine.id)*0.12);
-  segAlpha[si]=1;
-  segVineId[si]=vine.id;
-  segCount++;
-  vine.segLen++;
-
-  // Grid insert
-  gridInsert(np.x,np.y,np.z,vine.id,vine.segLen);
-
-  vine.tipPos=np;
-  vine.tipDir=nd;
-  vine.totalLen+=vine.stepSize;
-  vine.stepCount++;
-
-  // Leaf
-  if(vine.stepCount%vine.leafInterval===0&&rand()<0.55&&leafCount<MAX_LEAVES){
-    const li=leafCount;
-    const li3=li*3;
-    const side=new THREE.Vector3(rand()-.5,rand()-.5,rand()-.5).normalize();
-    leafPos[li3]=np.x+side.x*0.04;leafPos[li3+1]=np.y+side.y*0.04;leafPos[li3+2]=np.z+side.z*0.04;
-    const lc=rand()>0.4?vine.pal.leaf1:vine.pal.leaf2;
-    leafColor[li3]=lc.r;leafColor[li3+1]=lc.g;leafColor[li3+2]=lc.b;
-    const sizes=[[0.18,0.12],[0.1,0.25],[0.24,0.08],[0.14,0.18],[0.04,0.28],[0.2,0.15]];
-    const sz=sizes[ri(0,5)];
-    const sc=0.5+rand()*0.7;
-    leafScale[li*2]=sz[0]*sc;leafScale[li*2+1]=sz[1]*sc;
-    leafRot[li3]=side.x*2;leafRot[li3+1]=rand()*6.28;leafRot[li3+2]=side.z*1.5;
-    leafAlpha[li]=1;
-    leafVineId[li]=vine.id;
-    leafSwayOff[li]=rand()*6.28;
-    leafSwaySpd[li]=0.5+rand()*1.5;
-    leafCount++;
-    vine.leafLen++;
-  }
-
-  // Flower
-  if(vine.stepCount%vine.flowerInterval===0&&rand()<0.4&&vine.stepCount>8&&flowerCount<MAX_FLOWERS){
-    const fi=flowerCount;
-    const fi3=fi*3;
-    flPos[fi3]=np.x;flPos[fi3+1]=np.y;flPos[fi3+2]=np.z;
-    const fc=rand()>0.5?vine.pal.fl1:vine.pal.fl2;
-    flColor[fi3]=fc.r;flColor[fi3+1]=fc.g;flColor[fi3+2]=fc.b;
-    flSize[fi]=0.03+rand()*0.05;
-    flAlpha[fi]=1;
-    flVineId[fi]=vine.id;
-    flPulseOff[fi]=rand()*6.28;
-    flowerCount++;
-    vine.flLen++;
-  }
-
-  // Branch
-  if(rand()<0.005&&vine.stepCount>6&&vine.branchDepth<2&&vine.totalLen<vine.maxLen*0.6&&vines.length<MAX_VINES){
-    const perp=new THREE.Vector3(rand()-.5,rand()-.5,rand()-.5).normalize();
-    const bd=nd.clone().add(perp.multiplyScalar(0.7)).normalize();
-    const bv=new VineData(np,bd);
-    bv.maxLen=vine.maxLen*0.4*(0.5+rand()*0.5);
-    bv.thickness=vine.thickness*0.6;
-    bv.pal=vine.pal;
-    bv.branchDepth=vine.branchDepth+1;
-    vines.push(bv);
-  }
-}
-
-// ═══ WITHERING ═══
-function processWither(vine){
-  if(!vine.withering)return;
-  vine.witherAge++;
-  // Simple linear fade: 1 → 0
-  vine.witherAlpha=Math.max(0,1-vine.witherAge/vine.witherDuration);
-}
-
-// ═══ SPAWN FLASH ═══
-function spawnFlash(pos,color){
-  const mat=flashMat.clone();
-  mat.color=color.clone();
-  mat.opacity=1.0;
-  const mesh=new THREE.Mesh(flashGeo,mat);
-  mesh.position.copy(pos);
-  mesh.scale.setScalar(0.01);
-  scene.add(mesh);
-  flashes.push({mesh,age:0,maxAge:50,maxScale:0.12+rand()*0.1});
-}
-
-function spawnVine(quiet){
-  if(vines.length>=MAX_VINES||segCount>=MAX_SEGS-200)return;
-  const t=rand()*6.28,p=Math.acos(2*rand()-1),r=5+rand()*SPAWN_RADIUS;
-  const pos=new THREE.Vector3(r*Math.sin(p)*Math.cos(t),r*Math.sin(p)*Math.sin(t),r*Math.cos(p));
-  const dir=new THREE.Vector3(rand()-.5,rand()-.5,rand()-.5).normalize();
-  const v=new VineData(pos,dir);
-  vines.push(v);
-  if(!quiet) spawnFlash(pos,v.pal.flash);
-}
-
-// ═══ UPDATE INSTANCES ═══
-const _m=new THREE.Matrix4();
-const _p1=new THREE.Vector3();
-const _p2=new THREE.Vector3();
-const _d=new THREE.Vector3();
-const _q=new THREE.Quaternion();
-const _s2=new THREE.Vector3();
-const _c=new THREE.Color();
-
-// Vine alpha lookup — typed array indexed by vineId, much faster than Map
-const vineAlphaArr=new Float32Array(65536); // supports up to 65k vine IDs
-const _euler=new THREE.Euler();
-
-function updateInstances(time){
-  // Fill vineAlpha lookup: default 0 (invisible), alive vines get their alpha
-  // Only clear IDs we've used (cheaper than filling 65k)
-  for(const v of vines) vineAlphaArr[v.id%65536]=0;
-  for(const v of vines) if(v.alive) vineAlphaArr[v.id%65536]=v.witherAlpha;
-
-  // Segments
-  const sc2=Math.min(segCount,MAX_SEGS);
-  segIM.count=sc2;
-  for(let i=0;i<sc2;i++){
-    const a=vineAlphaArr[segVineId[i]%65536];
-    if(a<=0.01){_m.makeScale(0,0,0);segIM.setMatrixAt(i,_m);segIM.setColorAt(i,_c.setRGB(0,0,0));continue}
-    const i3=i*3;
-    _p1.set(segFrom[i3],segFrom[i3+1],segFrom[i3+2]);
-    _p2.set(segTo[i3],segTo[i3+1],segTo[i3+2]);
-    _d.subVectors(_p2,_p1);
-    const len=_d.length();
-    if(len<0.0001){_m.makeScale(0,0,0);segIM.setMatrixAt(i,_m);segIM.setColorAt(i,_c.setRGB(0,0,0));continue}
-    _d.normalize();
-    _q.setFromUnitVectors(UP,_d);
-    const th=segThick[i]*a;
-    _m.compose(_p1,_q,_s2.set(th,len,th));
-    segIM.setMatrixAt(i,_m);
-    segIM.setColorAt(i,_c.setRGB(segColor[i3]*a,segColor[i3+1]*a,segColor[i3+2]*a));
-  }
-  segIM.instanceMatrix.needsUpdate=true;
-  if(segIM.instanceColor)segIM.instanceColor.needsUpdate=true;
-
-  // Leaves
-  const lc2=Math.min(leafCount,MAX_LEAVES);
-  leafIM.count=lc2;
-  for(let i=0;i<lc2;i++){
-    const a=vineAlphaArr[leafVineId[i]%65536];
-    if(a<=0.01){_m.makeScale(0,0,0);leafIM.setMatrixAt(i,_m);leafIM.setColorAt(i,_c.setRGB(0,0,0));continue}
-    const i3=i*3,i2=i*2;
-    const sway=Math.sin(time*leafSwaySpd[i]+leafSwayOff[i])*0.1;
-    _euler.set(leafRot[i3]+sway,leafRot[i3+1],leafRot[i3+2]+sway*0.5);
-    _q.setFromEuler(_euler);
-    _m.compose(
-      _p1.set(leafPos[i3],leafPos[i3+1],leafPos[i3+2]),
-      _q,
-      _s2.set(leafScale[i2]*a,leafScale[i2+1]*a,1)
-    );
-    leafIM.setMatrixAt(i,_m);
-    leafIM.setColorAt(i,_c.setRGB(leafColor[i3]*a,leafColor[i3+1]*a,leafColor[i3+2]*a));
-  }
-  leafIM.instanceMatrix.needsUpdate=true;
-  if(leafIM.instanceColor)leafIM.instanceColor.needsUpdate=true;
-
-  // Flowers
-  const fc2=Math.min(flowerCount,MAX_FLOWERS);
-  flIM.count=fc2;
-  for(let i=0;i<fc2;i++){
-    const a=vineAlphaArr[flVineId[i]%65536];
-    if(a<=0.01){_m.makeScale(0,0,0);flIM.setMatrixAt(i,_m);flIM.setColorAt(i,_c.setRGB(0,0,0));continue}
-    const i3=i*3;
-    const pulse=1+Math.sin(time*1.5+flPulseOff[i])*0.12;
-    const sz=flSize[i]*pulse*a;
-    _m.compose(_p1.set(flPos[i3],flPos[i3+1],flPos[i3+2]),_q.identity(),_s2.set(sz,sz,sz));
-    flIM.setMatrixAt(i,_m);
-    flIM.setColorAt(i,_c.setRGB(flColor[i3]*a,flColor[i3+1]*a,flColor[i3+2]*a));
-  }
-  flIM.instanceMatrix.needsUpdate=true;
-  if(flIM.instanceColor)flIM.instanceColor.needsUpdate=true;
-}
-
-// ═══ GARBAGE COLLECTION ═══
-// When arrays fill up, compact by removing fully dead vine data
-function compactArrays(){
-  const aliveIds=new Set();
-  for(const v of vines)if(v.alive)aliveIds.add(v.id);
-
-  // Compact segments
-  let newSC=0;
-  const segRemap=new Map(); // old vine segStart -> new segStart
-  for(const v of vines){
-    if(!v.alive)continue;
-    const newStart=newSC;
-    for(let i=v.segStart;i<v.segStart+v.segLen&&i<segCount;i++){
-      if(!aliveIds.has(segVineId[i]))continue;
-      const j=newSC,i3=i*3,j3=j*3;
-      segFrom[j3]=segFrom[i3];segFrom[j3+1]=segFrom[i3+1];segFrom[j3+2]=segFrom[i3+2];
-      segTo[j3]=segTo[i3];segTo[j3+1]=segTo[i3+1];segTo[j3+2]=segTo[i3+2];
-      segColor[j3]=segColor[i3];segColor[j3+1]=segColor[i3+1];segColor[j3+2]=segColor[i3+2];
-      segAlpha[j]=segAlpha[i];segThick[j]=segThick[i];segVineId[j]=segVineId[i];
-      newSC++;
-    }
-    v.segStart=newStart;v.segLen=newSC-newStart;
-  }
-  segCount=newSC;
-
-  // Compact leaves
-  let newLC=0;
-  for(const v of vines){
-    if(!v.alive)continue;
-    const newStart=newLC;
-    for(let i=v.leafStart;i<v.leafStart+v.leafLen&&i<leafCount;i++){
-      if(!aliveIds.has(leafVineId[i]))continue;
-      const j=newLC,i3=i*3,j3=j*3,i2=i*2,j2=j*2;
-      leafPos[j3]=leafPos[i3];leafPos[j3+1]=leafPos[i3+1];leafPos[j3+2]=leafPos[i3+2];
-      leafColor[j3]=leafColor[i3];leafColor[j3+1]=leafColor[i3+1];leafColor[j3+2]=leafColor[i3+2];
-      leafScale[j2]=leafScale[i2];leafScale[j2+1]=leafScale[i2+1];
-      leafRot[j3]=leafRot[i3];leafRot[j3+1]=leafRot[i3+1];leafRot[j3+2]=leafRot[i3+2];
-      leafAlpha[j]=leafAlpha[i];leafVineId[j]=leafVineId[i];
-      leafSwayOff[j]=leafSwayOff[i];leafSwaySpd[j]=leafSwaySpd[i];
-      newLC++;
-    }
-    v.leafStart=newStart;v.leafLen=newLC-newStart;
-  }
-  leafCount=newLC;
-
-  // Compact flowers
-  let newFC=0;
-  for(const v of vines){
-    if(!v.alive)continue;
-    const newStart=newFC;
-    for(let i=v.flStart;i<v.flStart+v.flLen&&i<flowerCount;i++){
-      if(!aliveIds.has(flVineId[i]))continue;
-      const j=newFC,i3=i*3,j3=j*3;
-      flPos[j3]=flPos[i3];flPos[j3+1]=flPos[i3+1];flPos[j3+2]=flPos[i3+2];
-      flColor[j3]=flColor[i3];flColor[j3+1]=flColor[i3+1];flColor[j3+2]=flColor[i3+2];
-      flAlpha[j]=flAlpha[i];flSize[j]=flSize[i];flVineId[j]=flVineId[i];flPulseOff[j]=flPulseOff[i];
-      newFC++;
-    }
-    v.flStart=newStart;v.flLen=newFC-newStart;
-  }
-  flowerCount=newFC;
-
-  // Remove dead vines
-  for(let i=vines.length-1;i>=0;i--)if(!vines[i].alive)vines.splice(i,1);
-
-  // Rebuild grid
-  grid.clear();
-  for(let i=0;i<segCount;i++){
-    const i3=i*3;
-    gridInsert(segTo[i3],segTo[i3+1],segTo[i3+2],segVineId[i],i);
-  }
-}
-
-// ═══ MAIN LOOP ═══
-const clock=new THREE.Clock();
-let frame=0;
-let aliveCount=0;
-const TARGET_VINES=400;
-const STAGGER_BATCH=1;
-
-setTimeout(()=>document.getElementById('ld').classList.add('go'),800);
-
-function animate(){
-  requestAnimationFrame(animate);
-  const time=clock.getElapsedTime();
-  frame++;
-
-  // Camera
-  camera.lookAt(
-    Math.sin(phi)*Math.cos(theta)*10,
-    Math.cos(phi)*10,
-    Math.sin(phi)*Math.sin(theta)*10
-  );
-
-  // Aurora
-  for(const am of auroraMats) am.uniforms.uTime.value=time;
-
-  // Count alive and currently withering
-  aliveCount=0;
-  let witheringCount=0;
-  for(let i=0;i<vines.length;i++){
-    if(vines[i].alive){
-      aliveCount++;
-      if(vines[i].withering) witheringCount++;
-    }
-  }
-
-  // Grow & wither vines
-  for(let i=0;i<vines.length;i++){
-    const v=vines[i];
-    if(!v.alive)continue;
-    v.age++;
-
-    // Start withering ONLY if under the global budget (max 2 withering at once)
-    if(!v.withering&&v.age>v.witherStartAge&&witheringCount<6){
-      v.withering=true;
-      v.witherAge=0;
-      witheringCount++;
-    }
-
-    if(v.withering){
-      processWither(v);
-      if(v.witherAlpha<=0) v.alive=false;
-      continue;
-    }
-    v.growAccum+=0.05;
-    while(v.growAccum>=1){v.growAccum--;growVine(v,time)}
-  }
-
-  // Respawn: one new vine per 40 frames if below target
-  if(frame%15===0&&aliveCount<TARGET_VINES&&segCount<MAX_SEGS*0.8){
-    spawnVine();
-  }
-
-  // Compact GC periodically
-  if(frame%200===0&&segCount>MAX_SEGS*0.6){
-    compactArrays();
-  }
-  // Lightweight dead vine purge
-  if(frame%60===0){
-    for(let i=vines.length-1;i>=0;i--) if(!vines[i].alive) vines.splice(i,1);
-  }
-
-  // Update flashes
-  for(let i=flashes.length-1;i>=0;i--){
-    const f=flashes[i];
-    f.age++;
-    const t2=f.age/f.maxAge;
-    const s=f.maxScale*Math.sin(t2*Math.PI);
-    f.mesh.scale.setScalar(s);
-    f.mesh.material.opacity=(1-t2*t2)*0.9;
-    if(f.age>=f.maxAge){scene.remove(f.mesh);f.mesh.material.dispose();flashes.splice(i,1)}
-  }
-
-  updateInstances(time);
-  renderer.render(scene,camera);
-}
-animate();
-
-window.addEventListener('resize',()=>{
-  camera.aspect=innerWidth/innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth,innerHeight);
 });
-})();
+
+canvas.addEventListener('pointermove', e => {
+  if (dragging) dragCurrent = { x: e.clientX, y: e.clientY };
+});
+
+canvas.addEventListener('pointerup', e => {
+  if (dragging && dragStart) {
+    const dx = dragStart.x - e.clientX;
+    const dy = dragStart.y - e.clientY;
+    dragging.vx = dx * 0.25;
+    dragging.vy = dy * 0.25;
+  }
+  dragging = null; dragStart = null; dragCurrent = null;
+});
+
+// ─── Physics ───
+function physics() {
+  for (const b of marbles) {
+    if (b === dragging) continue;
+    b.x += b.vx;
+    b.y += b.vy;
+    b.vx *= FRICTION;
+    b.vy *= FRICTION;
+
+    // ring containment
+    const dx = b.x - ringCx, dy = b.y - ringCy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist + b.r > ringR) {
+      const nx = dx / dist, ny = dy / dist;
+      b.x = ringCx + nx * (ringR - b.r);
+      b.y = ringCy + ny * (ringR - b.r);
+      const dot = b.vx * nx + b.vy * ny;
+      b.vx -= 2 * dot * nx;
+      b.vy -= 2 * dot * ny;
+      b.vx *= RESTITUTION;
+      b.vy *= RESTITUTION;
+    }
+  }
+
+  // ball-ball collisions
+  for (let i = 0; i < marbles.length; i++) {
+    for (let j = i + 1; j < marbles.length; j++) {
+      const a = marbles[i], b = marbles[j];
+      if (a === dragging || b === dragging) continue;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const minDist = a.r + b.r;
+      if (dist < minDist && dist > 0.01) {
+        const nx = dx / dist, ny = dy / dist;
+        const overlap = minDist - dist;
+        const totalMass = a.r * a.r + b.r * b.r;
+        a.x -= nx * overlap * (b.r * b.r / totalMass);
+        a.y -= ny * overlap * (b.r * b.r / totalMass);
+        b.x += nx * overlap * (a.r * a.r / totalMass);
+        b.y += ny * overlap * (a.r * a.r / totalMass);
+
+        const dvx = a.vx - b.vx, dvy = a.vy - b.vy;
+        const dvDotN = dvx * nx + dvy * ny;
+        if (dvDotN > 0) {
+          const impulse = (2 * dvDotN / totalMass) * RESTITUTION;
+          a.vx -= impulse * b.r * b.r * nx;
+          a.vy -= impulse * b.r * b.r * ny;
+          b.vx += impulse * a.r * a.r * nx;
+          b.vy += impulse * a.r * a.r * ny;
+        }
+      }
+    }
+  }
+}
+
+// ─── Rendering ───
+function drawMarble(b) {
+  const { x, y, r, baseHue, sat, lit, deco } = b;
+  ctx.save();
+
+  // Base sphere gradient (glass-like)
+  const grad = ctx.createRadialGradient(x - r * 0.3, y - r * 0.35, r * 0.05, x, y, r);
+  grad.addColorStop(0, hsla(baseHue, sat, Math.min(lit + 35, 95), 0.95));
+  grad.addColorStop(0.4, hsla(baseHue, sat, lit, 0.9));
+  grad.addColorStop(0.8, hsla(baseHue, sat + 10, lit - 15, 0.88));
+  grad.addColorStop(1, hsla(baseHue, sat, lit - 25, 0.85));
+
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Decoration inside
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.92, 0, Math.PI * 2);
+  ctx.clip();
+
+  if (deco === 0) {
+    // swirl
+    for (let s = 0; s < b.swirlCount; s++) {
+      ctx.beginPath();
+      const sHue = (baseHue + 60 + s * 50) % 360;
+      ctx.strokeStyle = hsla(sHue, 80, 65, 0.6);
+      ctx.lineWidth = rand(1.5, 3);
+      for (let t = 0; t < 50; t++) {
+        const a = b.swirlAngle + s * (Math.PI * 2 / b.swirlCount) + t * 0.18;
+        const d = t * r * 0.018;
+        const px = x + Math.cos(a) * d;
+        const py = y + Math.sin(a) * d;
+        t === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    }
+  } else if (deco === 1) {
+    // cat-eye
+    const eyeGrad = ctx.createLinearGradient(x - r, y, x + r, y);
+    const eyeHue = (baseHue + 120) % 360;
+    eyeGrad.addColorStop(0, hsla(eyeHue, 80, 50, 0));
+    eyeGrad.addColorStop(0.35, hsla(eyeHue, 80, 60, 0.5));
+    eyeGrad.addColorStop(0.5, hsla(eyeHue, 90, 80, 0.7));
+    eyeGrad.addColorStop(0.65, hsla(eyeHue, 80, 60, 0.5));
+    eyeGrad.addColorStop(1, hsla(eyeHue, 80, 50, 0));
+    ctx.fillStyle = eyeGrad;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  } else if (deco === 2) {
+    // speckles
+    for (const sp of b.speckles) {
+      ctx.beginPath();
+      const sx = x + Math.cos(sp.a) * sp.d * r;
+      const sy = y + Math.sin(sp.a) * sp.d * r;
+      ctx.arc(sx, sy, sp.s * r, 0, Math.PI * 2);
+      ctx.fillStyle = hsla(sp.h, 70, 70, 0.55);
+      ctx.fill();
+    }
+  } else if (deco === 3) {
+    // bands
+    ctx.translate(x, y);
+    ctx.rotate(b.bandAngle);
+    for (let i = 0; i < b.bands; i++) {
+      const by = -r + (2 * r / (b.bands + 1)) * (i + 1);
+      ctx.fillStyle = hsla((baseHue + 90 + i * 40) % 360, 75, 65, 0.45);
+      ctx.fillRect(-r, by - 2.5, 2 * r, 5);
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  } else if (deco === 4) {
+    // inner star / flower
+    const petals = randInt(4, 7);
+    for (let p = 0; p < petals; p++) {
+      const a = (Math.PI * 2 / petals) * p;
+      ctx.beginPath();
+      ctx.ellipse(
+        x + Math.cos(a) * r * 0.3,
+        y + Math.sin(a) * r * 0.3,
+        r * 0.25, r * 0.1, a, 0, Math.PI * 2
+      );
+      ctx.fillStyle = hsla((baseHue + 150) % 360, 80, 70, 0.45);
+      ctx.fill();
+    }
+  }
+  // deco 5 = plain, no extra decoration
+
+  ctx.restore();
+
+  // Glass highlight (top-left)
+  const hlGrad = ctx.createRadialGradient(x - r * 0.32, y - r * 0.34, r * 0.02, x - r * 0.2, y - r * 0.2, r * 0.6);
+  hlGrad.addColorStop(0, 'rgba(255,255,255,0.75)');
+  hlGrad.addColorStop(0.5, 'rgba(255,255,255,0.18)');
+  hlGrad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = hlGrad;
+  ctx.fill();
+
+  // Small sharp highlight
+  ctx.beginPath();
+  ctx.arc(x - r * 0.28, y - r * 0.3, r * 0.1, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.fill();
+
+  // Subtle rim
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.strokeStyle = hsla(baseHue, sat, lit - 20, 0.35);
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+
+  // Shadow beneath
+  const shGrad = ctx.createRadialGradient(x + 3, y + 4, r * 0.2, x + 3, y + 4, r * 1.15);
+  shGrad.addColorStop(0, 'rgba(0,0,0,0.12)');
+  shGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.beginPath();
+  ctx.arc(x + 3, y + 4, r * 1.15, 0, Math.PI * 2);
+  ctx.fillStyle = shGrad;
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawRing() {
+  ctx.save();
+
+  // Draw the ring pattern as a clipped donut
+  const outerR = ringR + 22;
+  const innerR = ringR;
+
+  // Shadow
+  ctx.beginPath();
+  ctx.arc(ringCx, ringCy, outerR + 8, 0, Math.PI * 2);
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 30;
+  ctx.fillStyle = 'rgba(0,0,0,0)';
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Ring body (donut clip)
+  ctx.beginPath();
+  ctx.arc(ringCx, ringCy, outerR, 0, Math.PI * 2);
+  ctx.arc(ringCx, ringCy, innerR - 18, 0, Math.PI * 2, true);
+  ctx.clip();
+
+  // Draw the ring pattern canvas
+  const size = ringCanvas.width;
+  ctx.drawImage(ringCanvas, ringCx - size / 2, ringCy - size / 2);
+
+  // Add glossy highlight on ring
+  const ringGrad = ctx.createRadialGradient(ringCx, ringCy - ringR * 0.2, ringR * 0.5, ringCx, ringCy, outerR);
+  ringGrad.addColorStop(0, 'rgba(255,255,255,0.12)');
+  ringGrad.addColorStop(0.5, 'rgba(255,255,255,0.04)');
+  ringGrad.addColorStop(1, 'rgba(0,0,0,0.15)');
+  ctx.fillStyle = ringGrad;
+  ctx.fillRect(ringCx - outerR, ringCy - outerR, outerR * 2, outerR * 2);
+
+  ctx.restore();
+
+  // Inner rim highlight
+  ctx.beginPath();
+  ctx.arc(ringCx, ringCy, innerR - 2, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Outer rim
+  ctx.beginPath();
+  ctx.arc(ringCx, ringCy, outerR, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function drawSlingshot() {
+  if (!dragging || !dragStart || !dragCurrent) return;
+  const dx = dragStart.x - dragCurrent.x;
+  const dy = dragStart.y - dragCurrent.y;
+
+  // Draw the pull line
+  ctx.beginPath();
+  ctx.moveTo(dragging.x, dragging.y);
+  ctx.lineTo(dragging.x + dx * 0.6, dragging.y + dy * 0.6);
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Arrow head
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len > 10) {
+    const ax = dx / len, ay = dy / len;
+    const tipX = dragging.x + dx * 0.6;
+    const tipY = dragging.y + dy * 0.6;
+    ctx.beginPath();
+    ctx.moveTo(tipX, tipY);
+    ctx.lineTo(tipX - ax * 10 + ay * 5, tipY - ay * 10 - ax * 5);
+    ctx.lineTo(tipX - ax * 10 - ay * 5, tipY - ay * 10 + ax * 5);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fill();
+  }
+}
+
+// ─── Floor for arena (dark surface) ───
+function drawArenaFloor() {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(ringCx, ringCy, ringR - 2, 0, Math.PI * 2);
+  ctx.clip();
+  const floorGrad = ctx.createRadialGradient(ringCx, ringCy - ringR * 0.3, 0, ringCx, ringCy, ringR);
+  floorGrad.addColorStop(0, '#2a2a3e');
+  floorGrad.addColorStop(0.7, '#1a1a2a');
+  floorGrad.addColorStop(1, '#101018');
+  ctx.fillStyle = floorGrad;
+  ctx.fillRect(ringCx - ringR, ringCy - ringR, ringR * 2, ringR * 2);
+  ctx.restore();
+}
+
+// ─── Main loop ───
+function frame() {
+  physics();
+
+  // Clear
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.drawImage(bgCanvas, 0, 0);
+
+  // Dark vignette
+  const vig = ctx.createRadialGradient(ringCx, ringCy, ringR * 0.5, ringCx, ringCy, Math.max(W, H) * 0.75);
+  vig.addColorStop(0, 'rgba(0,0,0,0)');
+  vig.addColorStop(1, 'rgba(0,0,0,0.45)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, W, H);
+
+  // Arena floor
+  drawArenaFloor();
+
+  // Ring
+  drawRing();
+
+  // Marbles (sorted by y for depth illusion)
+  const sorted = [...marbles].sort((a, b) => a.y - b.y);
+  for (const b of sorted) drawMarble(b);
+
+  // Slingshot UI
+  drawSlingshot();
+
+  requestAnimationFrame(frame);
+}
+
+frame();
 </script>
 </body>
 </html>
